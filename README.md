@@ -2,7 +2,8 @@
 
 Sistema completo de gestión de citas y servicios para barberías, desarrollado con arquitectura moderna cliente-servidor. Incluye panel de administración, sistema de autenticación robusto, gestión de pagos simulados y notificaciones en tiempo real.
 
-![Demo del Sistema](https://i.imgur.com/09dfSO0.gif)
+![Demo del Sistema](Recursos/Animacion.gif)
+
 
 ## 🚀 Tecnologías
 
