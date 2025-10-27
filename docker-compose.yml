@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: david_bases
+      POSTGRES_PASSWORD: 123456  # ⚠️ Usa .env o secrets en producción
+      POSTGRES_DB: bd_barberia
+    volumes:
+      - postgres-data:/var/lib/postgresql/data  # Persistencia de datos
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U david_bases -d bd_barberia"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env  # Cambia este archivo según el entorno
+    networks:
+      - app-network
+  # Servicio auxiliar para tareas CLI (generar migraciones, ejecutar scripts TypeScript)
+  backend-cli:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: build  # Usa la etapa "build" que conserva TypeScript y node_modules completos
+    working_dir: /usr/src/app
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules  # Evita conflictos entre node_modules del host y container
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    profiles:
+      - tools  # No se levanta con "docker compose up", solo con "docker compose run backend-cli"
+
+  nginx:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Certificados SSL de Let's Encrypt
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      # ⚙️ Monta config distinta según el entorno (opcional)
+      # - ./frontend/nginx.prod.conf:/etc/nginx/conf.d/default.conf
+      # - ./frontend/nginx.dev.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - app-network
+
+volumes:
+  postgres-data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,36 @@
+Datos del Negocio
+Nombre: Barbería Sunsetz
+Ubicación: Plaza 25 de Mayo, Sucre, Bolivia
+Horario de Atención:
+
+Lunes a Domingo
+8:00 AM - 8:00 PM (20:00)
+
+Datos de Contacto:
+
+Teléfono: 70000000
+Correo electrónico: contacto@sunsetz.example
+
+
+Información Técnica para Programación
+Zona Horaria: America/La_Paz (UTC-4)
+Idioma Principal: Español
+Moneda: Bolivianos (BOB)
+Días Laborales: 7 días a la semana (sin días de descanso)
+Formato de Horario:
+
+Apertura: 08:00
+Cierre: 20:00
+Duración: 12 horas diarias
+
+Información de Ubicación:
+
+Ciudad: Sucre
+Departamento: Chuquisaca
+País: Bolivia
+Punto de referencia: Plaza 25 de Mayo (centro histórico)
+
+Contacto para Validaciones:
+
+Formato teléfono: +591 70000000 (código de país incluido)
+Email: contacto@sunsetz.example
