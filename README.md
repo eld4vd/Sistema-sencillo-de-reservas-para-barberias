@@ -87,10 +87,10 @@ cp .env.example .env
 3. **Levantar servicios con Docker**
 ```bash
 # Construir imágenes
-docker-compose build
+docker compose build
 
 # Levantar servicios en segundo plano
-docker-compose up -d
+docker compose up -d
 ```
 
 4. **Acceder a la aplicación**
@@ -241,16 +241,16 @@ El sistema implementa un flujo de autenticación seguro:
 
 ```bash
 # Construir imágenes de producción
-docker-compose build
+docker compose build
 
 # Levantar servicios en segundo plano
-docker-compose up -d
+docker compose up -d
 
 # Ver logs en tiempo real
-docker-compose logs -f backend
+docker compose logs -f backend
 
 # Detener servicios
-docker-compose down
+docker compose down
 ```
 
 
