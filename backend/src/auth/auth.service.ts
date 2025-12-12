@@ -34,8 +34,6 @@ export class AuthService {
     const accessToken = await this.generateAccessToken(payload);
     const refreshToken = await this.generateRefreshToken(payload);
 
-    console.log(`[AUTH] Login exitoso: user ${adminOk.id} (${adminOk.email})`);
-
     return {
       accessToken,
       refreshToken,
@@ -60,7 +58,6 @@ export class AuthService {
       // Verificar que el usuario aún existe
       const admin = await this.adminsService.findOne(payload.sub);
       if (!admin) {
-        console.warn(`[AUTH] Refresh fallido: usuario ${payload.sub} no encontrado`);
         throw new UnauthorizedException('Usuario no encontrado');
       }
 
@@ -68,11 +65,8 @@ export class AuthService {
       const newPayload: JwtPayload = { sub: payload.sub };
       const accessToken = await this.generateAccessToken(newPayload);
 
-      console.log(`[AUTH] Refresh exitoso: user ${payload.sub}`);
-
       return { accessToken };
     } catch (error) {
-      console.warn(`[AUTH] Refresh fallido: token inválido o expirado`);
       throw new UnauthorizedException('Refresh token inválido o expirado');
     }
   }

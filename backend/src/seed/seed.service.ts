@@ -27,15 +27,11 @@ export class SeedService implements OnApplicationBootstrap {
           : seedEnabledDefault;
 
       if (!seedEnabled) {
-        this.logger.log(
-          'Seed deshabilitado por configuración (SEED_ON_BOOT=false).',
-        );
         return;
       }
 
       const adminsCount = await this.adminsRepository.count();
       if (adminsCount > 0) {
-        this.logger.log('Admins ya existen, se omite seed inicial.');
         return;
       }
 
@@ -52,7 +48,6 @@ export class SeedService implements OnApplicationBootstrap {
       admin.password = password; // Será hasheado por el hook de la entidad
 
       await this.adminsRepository.save(admin);
-      this.logger.log(`Admin por defecto creado: ${email}`);
     } catch (error) {
       this.logger.error(
         'Error ejecutando seed inicial',

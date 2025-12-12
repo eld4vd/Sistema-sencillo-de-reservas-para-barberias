@@ -130,25 +130,14 @@ const GalleryShowcase = () => {
 
       <div className="relative mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-12">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"
-        >
-          <div>
-            <span className="mb-2 inline-block rounded-full border border-[#B8935E]/30 bg-[#0A0B0E]/60 px-5 py-1.5 text-[10px] uppercase tracking-[0.3em] text-[#B8935E] backdrop-blur-sm">
-              Portfolio 2025
-            </span>
-            <h2 className="mt-3 text-3xl leading-tight tracking-[0.06em] md:text-[2.75rem]">
-              Cortes que definen estilo
-            </h2>
-          </div>
-          <p className="text-xs uppercase tracking-[0.35em] text-[#FAF8F3]/70">
-            10 estilos · Alta definición
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-semibold text-[#FAF8F3] md:text-4xl">
+            Nuestros cortes
+          </h2>
+          <p className="mt-3 text-[#FAF8F3]/70">
+            Estilos modernos y clásicos
           </p>
-        </motion.div>
+        </div>
 
         {/* Masonry Layout tipo Pinterest */}
         <div ref={containerRef} className="relative">

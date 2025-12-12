@@ -208,10 +208,6 @@ export class PagosService {
     const fallidos = parseInt(stats.fallidos) || 0;
     const ticketPromedio = total > 0 ? totalMonto / total : 0;
 
-    console.log('🔍 Pagos encontrados:', total);
-    console.log('📦 Data length:', data.length);
-    console.log('📊 Stats:', { totalMonto, completados, pendientes, fallidos });
-
     return {
       data,
       meta: {

@@ -1,68 +1,58 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense } from "react";
+import HeroCinematic from "../components/public/Home/HeroCinematic";
 
-import HeroSection from "../components/public/Home/HeroSection";
+// Lazy load para mejor performance
+const HorizontalGallery = lazy(
+  () => import("../components/public/Home/HorizontalGallery")
+);
+const InfiniteMarquee = lazy(
+  () => import("../components/public/Home/InfiniteMarquee")
+);
+const ServicesSection = lazy(
+  () => import("../components/public/Home/ServicesSection")
+);
+const VenueSection = lazy(
+  () => import("../components/public/Home/VenueSection")
+);
+const FinalCTA = lazy(() => import("../components/public/Home/FinalCTA"));
 
-const GalleryShowcase = lazy(
-  () => import("../components/public/Home/GalleryShowcase")
-);
-const ExperienceHighlights = lazy(
-  () => import("../components/public/Home/ExperienceHighlights")
-);
-const TestimonialsPreview = lazy(
-  () => import("../components/public/Home/TestimonialsPreview")
-);
-
-const DeferredSectionsFallback = () => (
-  <section
-    aria-hidden="true"
-    className="flex flex-col gap-8 bg-[#050607] px-6 py-16 text-[#FAF8F3]/40 sm:px-12"
-  >
-    <div className="h-6 w-40 rounded-full bg-[#1A1C20]" />
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div
-          key={`home-skeleton-${index}`}
-          className="h-48 rounded-3xl bg-[#101216]"
-        />
-      ))}
-    </div>
-  </section>
+// Loading skeleton minimalista
+const SectionSkeleton = () => (
+  <div className="flex min-h-[50vh] items-center justify-center bg-black">
+    <div className="h-1 w-16 animate-pulse rounded-full bg-[#B8935E]/30" />
+  </div>
 );
 
 const Home = () => {
-  const [showDeferredSections, setShowDeferredSections] = useState(false);
-
-  useEffect(() => {
-    const run = () => setShowDeferredSections(true);
-
-    const idleWindow = window as typeof window & {
-      requestIdleCallback?: (cb: () => void) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-
-    if ("requestIdleCallback" in idleWindow && idleWindow.requestIdleCallback) {
-      const idleHandle = idleWindow.requestIdleCallback(run);
-
-      return () =>
-        idleWindow.cancelIdleCallback && idleWindow.cancelIdleCallback(idleHandle);
-    }
-
-    const timeoutId = window.setTimeout(run, 200);
-    return () => window.clearTimeout(timeoutId);
-  }, []);
-
   return (
-    <main className="bg-[#0D0D0D] text-[#FAF8F3]">
-      <HeroSection />
-      {showDeferredSections ? (
-        <Suspense fallback={<DeferredSectionsFallback />}>
-          <GalleryShowcase />
-          <ExperienceHighlights />
-          <TestimonialsPreview />
-        </Suspense>
-      ) : (
-        <DeferredSectionsFallback />
-      )}
+    <main className="bg-black">
+      {/* Hero - No lazy porque es lo primero que se ve */}
+      <HeroCinematic />
+
+      {/* Marquee separador */}
+      <Suspense fallback={<div className="h-16 bg-[#B8935E]" />}>
+        <InfiniteMarquee />
+      </Suspense>
+
+      {/* Galería horizontal con parallax */}
+      <Suspense fallback={<SectionSkeleton />}>
+        <HorizontalGallery />
+      </Suspense>
+
+      {/* Servicios */}
+      <Suspense fallback={<SectionSkeleton />}>
+        <ServicesSection />
+      </Suspense>
+
+      {/* Venue - Nuestro local */}
+      <Suspense fallback={<SectionSkeleton />}>
+        <VenueSection />
+      </Suspense>
+
+      {/* CTA Final */}
+      <Suspense fallback={<SectionSkeleton />}>
+        <FinalCTA />
+      </Suspense>
     </main>
   );
 };

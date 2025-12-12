@@ -207,8 +207,6 @@ export class AuthController {
       path: '/',
     });
 
-    console.log('[AUTH] Logout: cookies limpiadas');
-
     return { success: true };
   }
 

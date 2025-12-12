@@ -64,33 +64,12 @@ const VenueShowcase = () => {
       <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-10">
         {/* Header */}
         <div className="mb-12 text-center">
-          <motion.span
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.4 }}
-            className="inline-block rounded-full border border-[#B8935E]/30 bg-[#0A0B0E]/60 px-5 py-1.5 text-[10px] uppercase tracking-[0.22em] text-[#B8935E] backdrop-blur-sm"
-          >
-            Nuestro espacio
-          </motion.span>
-          <motion.h2
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="mt-5 text-3xl leading-tight md:text-[2.8rem]"
-          >
-            Donde el estilo cobra vida
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55 }}
-            className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[#FAF8F3]/70"
-          >
-            Recorre visualmente nuestras instalaciones diseñadas para ofrecer experiencias premium en el centro de Sucre
-          </motion.p>
+          <h2 className="text-3xl font-semibold text-[#FAF8F3] md:text-4xl">
+            Nuestro local
+          </h2>
+          <p className="mx-auto mt-3 max-w-lg text-[#FAF8F3]/70">
+            Instalaciones modernas en Plaza 25 de Mayo
+          </p>
         </div>
 
         {/* Grid principal */}
