@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { NotificationsContext, type Notification } from "./NotificationsContext";
 
 interface NotificationsProviderProps {
@@ -44,12 +44,12 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
     }
   }, []);
 
-  // Limpiar notificaciones antiguas (más de 24 horas) cada minuto
+  // Limpiar notificaciones antiguas (más de 24 horas) cada 5 minutos
   useEffect(() => {
     const interval = setInterval(() => {
       const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
       setNotifications((prev) => prev.filter((n) => n.timestamp > oneDayAgo));
-    }, 60000);
+    }, 300000); // 5 minutos para reducir re-renders
 
     return () => clearInterval(interval);
   }, []);
@@ -126,17 +126,21 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  // Memoizar el valor del context para evitar re-renders innecesarios
+  const contextValue = useMemo(
+    () => ({
+      notifications,
+      unreadCount,
+      addNotification,
+      markAsRead,
+      markAllAsRead,
+      clearNotifications,
+    }),
+    [notifications, unreadCount, addNotification, markAsRead, markAllAsRead, clearNotifications]
+  );
+
   return (
-    <NotificationsContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        clearNotifications,
-      }}
-    >
+    <NotificationsContext.Provider value={contextValue}>
       {children}
     </NotificationsContext.Provider>
   );

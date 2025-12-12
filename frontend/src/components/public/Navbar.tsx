@@ -241,13 +241,6 @@ const Navbar = () => {
                     Portal Admin
                   </Link>
                 )}
-                <a
-                  href={`tel:${businessInfo.contact.phone}`}
-                  className="flex items-center justify-center gap-2 rounded-full border border-[#B8935E]/40 px-4 py-2.5 text-sm font-medium text-[#B8935E] hover:bg-[#B8935E]/10 transition-colors"
-                >
-                  <FaPhone size={14} />
-                  <span>Llamar</span>
-                </a>
               </div>
             </motion.div>
           </>

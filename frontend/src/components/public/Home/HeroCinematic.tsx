@@ -106,7 +106,7 @@ const HeroCinematic = () => {
         >
           <Link
             to="/reservas"
-            className="group relative overflow-hidden rounded-full bg-white px-10 py-4 text-sm font-semibold uppercase tracking-wider text-black transition-all duration-300 hover:bg-[#B8935E] hover:text-white"
+            className="group relative overflow-hidden rounded-full bg-black/80 px-10 py-4 text-sm font-semibold uppercase tracking-wider text-white transition-all duration-300 hover:bg-[#B8935E] hover:text-black"
           >
             <span className="relative z-10">Reservar Ahora</span>
           </Link>

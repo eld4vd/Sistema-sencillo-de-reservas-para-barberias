@@ -8,11 +8,16 @@ export interface LoadProfileOptions {
   silent?: boolean; // No mostrar loading durante la recarga
 }
 
+// Opciones para refrescar la sesión
+export interface RefreshSessionOptions {
+  silent?: boolean; // No mostrar loading ni actualizar state innecesariamente
+}
+
 // Contexto de autenticación - contiene estado + métodos para login/logout/refresh
 export interface AuthContextValue extends AuthState {
   login: (credentials: LoginRequest) => Promise<AuthUser>;
   logout: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  refreshSession: (options?: RefreshSessionOptions) => Promise<{ success: boolean }>;
   refreshCsrfToken: () => Promise<string | null>;
   reloadProfile: (options?: LoadProfileOptions) => Promise<AuthUser | null>;
   setError: (message: string | null) => void;

@@ -320,113 +320,85 @@ const PeluquerosDashboard = () => {
     return () => window.clearTimeout(timeout);
   }, [flashMessage]);
 
-  const totalBarbers = peluqueros.length;
-  const withEspecialidad = peluqueros.filter((item) => Boolean(item.especialidad)).length;
-  const morningShift = peluqueros.filter((item) => (item.horarioInicio ?? "").slice(0, 2) <= "09").length;
-
   return (
-    <div className="space-y-6">
-      {flashMessage ? (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm text-blue-600 shadow-lg"
-        >
-          {flashMessage}
-        </motion.div>
-      ) : null}
-
+    <>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900">
-              Gestión de Peluqueros
-            </h2>
-            <p className="mt-1 text-sm text-gray-700">
-              Controla el staff, define horarios y libera cupos en cuestión de segundos
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => openModal("create")}
-            className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-5 py-2.5 text-xs uppercase tracking-[0.24em] text-blue-600 transition hover:border-blue-500 hover:bg-blue-50"
+        {flashMessage ? (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm text-blue-600 shadow-lg"
           >
-            <FaPlus />
-            Añadir peluquero
-          </button>
-        </div>
+            {flashMessage}
+          </motion.div>
+        ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-[0.28em] text-gray-600">Equipo total</span>
-              <FaUserTie className="text-blue-600" />
-            </div>
-            <p className="mt-3 text-3xl font-semibold text-gray-900">
-              {totalBarbers.toString().padStart(2, "0")}
-            </p>
-            <p className="mt-2 text-xs text-gray-600">Barberos activos</p>
-          </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-[0.28em] text-gray-600">Con especialidad</span>
-              <FaCut className="text-amber-400" />
-            </div>
-            <p className="mt-3 text-3xl font-semibold text-gray-900">
-              {withEspecialidad.toString().padStart(2, "0")}
-            </p>
-            <p className="mt-2 text-xs text-gray-600">Staff especializado</p>
-          </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-[0.28em] text-gray-600">Turno matutino</span>
-              <FaClock className="text-emerald-400" />
-            </div>
-            <p className="mt-3 text-3xl font-semibold text-gray-900">
-              {morningShift.toString().padStart(2, "0")}
-            </p>
-            <p className="mt-2 text-xs text-gray-600">Disponibles temprano</p>
-          </div>
+      {/* Header limpio */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">
+            Peluqueros
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Gestiona el equipo, horarios y especialidades del personal
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => openModal("create")}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+        >
+          <FaPlus />
+          Añadir peluquero
+        </button>
+      </div>
 
-        <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="relative flex-1">
-              <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+      {/* Tabla principal con búsqueda integrada */}
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+        {/* Búsqueda + contador inline */}
+        <div className="border-b border-gray-200 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-md">
+              <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por nombre, especialidad o día libre"
-                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+                placeholder="Buscar peluqueros..."
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <span>{filtered.length} de {peluqueros.length} peluqueros</span>
+            </div>
           </div>
+        </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="text-left uppercase tracking-[0.24em] text-gray-600 text-[10px] border-b border-gray-200">
+        {/* Tabla */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                <th className="px-4 py-3">Peluquero</th>
+                <th className="px-4 py-3">Horario</th>
+                <th className="px-4 py-3">Servicios</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
                 <tr>
-                  <th className="pb-3 pt-2">Barbero</th>
-                  <th className="pb-3 pt-2">Disponibilidad</th>
-                  <th className="pb-3 pt-2">Servicios</th>
-                  <th className="pb-3 pt-2 text-right">Acciones</th>
+                  <td colSpan={4} className="py-12 text-center text-gray-500">
+                    Cargando peluqueros…
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-[#151515] text-gray-700">
-                {loading ? (
-                  <tr>
-                    <td colSpan={4} className="py-12 text-center text-gray-600">
-                      Cargando barberos…
-                    </td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-12 text-center text-gray-600">
-                      Sin resultados que coincidan con la búsqueda.
-                    </td>
-                  </tr>
-                ) : (
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-gray-500">
+                    Sin resultados que coincidan con la búsqueda.
+                  </td>
+                </tr>
+              ) : (
                   filtered.map((peluquero) => {
                     const diasLibresList = (peluquero.diasLibres ?? "")
                       .split(",")
@@ -559,19 +531,19 @@ const PeluquerosDashboard = () => {
               </tbody>
             </table>
           </div>
-
-          {serviciosError && !serviciosLoading ? (
-            <div className="rounded-lg border border-red-500/35 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-              No se pudieron cargar los servicios disponibles: {serviciosError}
-            </div>
-          ) : null}
-
-          {error ? (
-            <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-              {error}
-            </div>
-          ) : null}
         </div>
+
+        {serviciosError && !serviciosLoading ? (
+          <div className="rounded-lg border border-red-500/35 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            No se pudieron cargar los servicios disponibles: {serviciosError}
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
+        ) : null}
       </div>
 
       <AdminModal
@@ -786,7 +758,7 @@ const PeluquerosDashboard = () => {
           </div>
         ) : null}
       </AdminModal>
-    </div>
+    </>
   );
 };
 
