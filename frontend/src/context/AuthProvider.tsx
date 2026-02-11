@@ -240,8 +240,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, [ensureCsrfToken, setAuthState]);
 
   const refreshSession = useCallback<AuthContextValue["refreshSession"]>(
-    async () => {
-      setAuthState((prev) => ({ ...prev, isLoading: true }));
+    async ({ silent = true } = {}) => {
+      // Solo mostrar loading si no es silencioso (evita re-renders innecesarios)
+      if (!silent) {
+        setAuthState((prev) => ({ ...prev, isLoading: true }));
+      }
       try {
         const token = await ensureCsrfToken();
         if (!token) {
@@ -252,15 +255,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           throw new Error("No fue posible refrescar la sesión.");
         }
         syncCsrfFromCookie();
-        const refreshedUser = await loadProfile({
-          retryOnUnauthorized: true,
-          silent: true,
-        });
-        if (!refreshedUser) {
-          throw new Error(
-            "No fue posible obtener el perfil tras refrescar."
-          );
+        
+        // Solo recargar perfil si no es silencioso
+        if (!silent) {
+          const refreshedUser = await loadProfile({
+            retryOnUnauthorized: true,
+            silent: true,
+          });
+          if (!refreshedUser) {
+            throw new Error(
+              "No fue posible obtener el perfil tras refrescar."
+            );
+          }
         }
+        
+        return response;
       } catch (error) {
         setAuthState((prev) => ({
           ...prev,
@@ -320,12 +329,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const REFRESH_INTERVAL = 12 * 60 * 1000; // 12 minutos
 
     const intervalId = setInterval(async () => {
-      // Ejecutar refresh si el usuario sigue autenticado
-      // Ya no verificamos visibilidad para evitar que expire en pestañas en background
+      // Ejecutar refresh silencioso para evitar re-renders innecesarios
       if (state.isAuthenticated) {
         try {
-          await refreshSession();
-          authLogger.log('Token renovado automáticamente');
+          await refreshSession({ silent: true });
+          authLogger.log('Token renovado automáticamente (silencioso)');
         } catch (error) {
           authLogger.error('Error al renovar token:', error);
           // Si falla el refresh, el usuario verá el error en la próxima request
@@ -351,9 +359,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (document.visibilityState === 'visible' && timeSinceLastRefresh > FOURTEEN_MINUTES && state.isAuthenticated) {
         try {
-          await refreshSession();
+          await refreshSession({ silent: true });
           lastRefreshTime = Date.now();
-          authLogger.log('Token renovado tras volver a la pestaña');
+          authLogger.log('Token renovado tras volver a la pestaña (silencioso)');
         } catch (error) {
           authLogger.error('Error al renovar token tras visibilidad:', error);
         }

@@ -166,28 +166,16 @@ const ReservasDashboard = () => {
   useEffect(() => {
     loadData({ force: true });
 
-    // Polling inteligente: actualiza cada 30 segundos solo si la página está visible
+    // Polling optimizado: actualiza cada 45 segundos solo si la página está visible
+    // Removido listener de visibilitychange para evitar cargas duplicadas
     const intervalId = setInterval(() => {
       if (document.visibilityState === "visible") {
         loadData();
       }
-    }, 30000); // 30 segundos
-
-    // Listener para actualizar cuando el usuario regresa a la pestaña
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        // Esperar 500ms antes de cargar para evitar duplicados con el interval
-        setTimeout(() => {
-          loadData();
-        }, 500);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    }, 45000); // 45 segundos - balance entre actualización y performance
 
     return () => {
       clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [loadData]);
 
