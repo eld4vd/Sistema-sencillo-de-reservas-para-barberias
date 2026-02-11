@@ -29,7 +29,8 @@ const Navbar = () => {
     };
 
     handleScroll();
-    window.addEventListener("scroll", handleScroll);
+    // client-passive-event-listeners: scroll listener doesn't call preventDefault
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -69,7 +70,7 @@ const Navbar = () => {
       <motion.header
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className={`fixed top-0 z-50 w-full transition-all duration-300 ${
+        className={`fixed top-0 z-50 w-full transition-[background-color,border-color,box-shadow] duration-300 ${
           isScrolled
             ? "bg-[#080808]/95 backdrop-blur-xl border-b border-[#1F1F1F]/60 shadow-lg"
             : "bg-[#080808]/90 backdrop-blur-md border-b border-[#1F1F1F]/30"
@@ -77,7 +78,7 @@ const Navbar = () => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
-            className={`flex items-center justify-between transition-all duration-300 ${
+            className={`flex items-center justify-between transition-[padding] duration-300 ${
               isScrolled ? "py-3" : "py-4"
             }`}
           >
@@ -89,13 +90,13 @@ const Navbar = () => {
               <img
                 src={emblemLogo}
                 alt="Barbería Sunsetz"
-                className={`rounded-full object-cover transition-all duration-300 ${
+                className={`rounded-full object-cover transition-[height,width] duration-300 ${
                   isScrolled ? "h-11 w-11" : "h-12 w-12"
                 }`}
                 loading="eager"
               />
               <div className="hidden sm:block">
-                <h1 className={`font-semibold text-[#FAF8F3] transition-all duration-300 ${
+                <h1 className={`font-semibold text-[#FAF8F3] transition-[font-size] duration-300 ${
                   isScrolled ? "text-xl" : "text-2xl"
                 }`}>
                   Barbería Sunsetz
@@ -150,7 +151,7 @@ const Navbar = () => {
               <Link
                 to="/reservas"
                 onMouseEnter={() => prefetchByPath("/reservas")}
-                className="rounded-full bg-[#B8935E] px-5 py-2 text-sm font-semibold text-[#0D0D0D] shadow-lg hover:bg-[#C9A46F] transition-all"
+                className="rounded-full bg-[#B8935E] px-5 py-2 text-sm font-semibold text-[#0D0D0D] shadow-lg hover:bg-[#C9A46F] transition-colors"
               >
                 Reservar
               </Link>
@@ -158,11 +159,11 @@ const Navbar = () => {
 
             {/* Mobile Menu Button */}
             <button
-              onClick={() => setOpen(!open)}
+              onClick={() => setOpen(prev => !prev)}
               className="md:hidden rounded-lg p-2 text-[#B8935E] hover:bg-[#B8935E]/10 transition-colors"
               aria-label="Toggle menu"
             >
-              {open ? <FaTimes size={20} /> : <FaBars size={20} />}
+              {open ? <FaTimes size={20} aria-hidden="true" /> : <FaBars size={20} aria-hidden="true" />}
             </button>
           </div>
         </div>
@@ -191,7 +192,7 @@ const Navbar = () => {
               <div className="flex items-center justify-between border-b border-[#2A2A2A] p-4">
                 <div className="flex items-center gap-2">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#B8935E] to-[#8B1A1A]">
-                    <FaCut className="h-5 w-5 text-[#0D0D0D]" />
+                    <FaCut className="h-5 w-5 text-[#0D0D0D]" aria-hidden="true" />
                   </div>
                   <span className="text-lg font-semibold text-[#FAF8F3]">
                     Sunsetz
@@ -201,7 +202,7 @@ const Navbar = () => {
                   onClick={() => setOpen(false)}
                   className="rounded-lg p-2 text-[#B8935E] hover:bg-[#B8935E]/10 transition-colors"
                 >
-                  <FaTimes size={18} />
+                  <FaTimes size={18} aria-hidden="true" />
                 </button>
               </div>
 
@@ -245,7 +246,7 @@ const Navbar = () => {
                   href={`tel:${businessInfo.contact.phone}`}
                   className="flex items-center justify-center gap-2 rounded-full border border-[#B8935E]/40 px-4 py-2.5 text-sm font-medium text-[#B8935E] hover:bg-[#B8935E]/10 transition-colors"
                 >
-                  <FaPhone size={14} />
+                  <FaPhone size={14} aria-hidden="true" />
                   <span>Llamar</span>
                 </a>
               </div>

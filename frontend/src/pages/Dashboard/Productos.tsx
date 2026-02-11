@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   FaBox,
@@ -53,7 +53,7 @@ const ProductosDashboard = () => {
   const [deleteTarget, setDeleteTarget] = useState<Producto | null>(null);
   const [deleteMutation, setDeleteMutation] = useState<"idle" | "loading">("idle");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -64,7 +64,7 @@ const ProductosDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -76,22 +76,32 @@ const ProductosDashboard = () => {
     return () => window.clearTimeout(timeout);
   }, [flashMessage]);
 
-  const filtered = productos.filter((producto) => {
+  const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return true;
-    return (
+    if (!term) return productos;
+    return productos.filter((producto) =>
       producto.nombre.toLowerCase().includes(term) ||
       producto.categoria?.toLowerCase().includes(term) ||
       producto.descripcion?.toLowerCase().includes(term)
     );
-  });
+  }, [productos, search]);
 
-  const totalProductos = productos.length;
-  const productosActivos = productos.filter((p) => p.activo).length;
-  const valorInventario = productos.reduce((acc, p) => acc + p.precio * p.stock, 0);
-  const stockBajo = productos.filter((p) => p.stock < 5 && p.activo).length;
+  // Consolidated: single pass for all product metrics
+  const productStats = useMemo(() => {
+    let activos = 0;
+    let valorInventario = 0;
+    let stockBajo = 0;
+    for (const p of productos) {
+      if (p.activo) {
+        activos += 1;
+        if (p.stock < 5) stockBajo += 1;
+      }
+      valorInventario += p.precio * p.stock;
+    }
+    return { total: productos.length, activos, valorInventario, stockBajo };
+  }, [productos]);
 
-  const openCreateModal = () => {
+  const openCreateModal = useCallback(() => {
     setModalMode("create");
     setSelectedProducto(null);
     setFormData({
@@ -105,9 +115,9 @@ const ProductosDashboard = () => {
     });
     setFormErrors({});
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const openEditModal = (producto: Producto) => {
+  const openEditModal = useCallback((producto: Producto) => {
     setModalMode("edit");
     setSelectedProducto(producto);
     setFormData({
@@ -121,9 +131,9 @@ const ProductosDashboard = () => {
     });
     setFormErrors({});
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedProducto(null);
     setFormData({
@@ -137,7 +147,7 @@ const ProductosDashboard = () => {
     });
     setFormErrors({});
     setFormMutation("idle");
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,15 +173,15 @@ const ProductosDashboard = () => {
     }
   };
 
-  const openDeleteModal = (producto: Producto) => {
+  const openDeleteModal = useCallback((producto: Producto) => {
     setDeleteTarget(producto);
     setDeleteMutation("idle");
-  };
+  }, []);
 
-  const closeDeleteModal = () => {
+  const closeDeleteModal = useCallback(() => {
     setDeleteTarget(null);
     setDeleteMutation("idle");
-  };
+  }, []);
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -230,14 +240,14 @@ const ProductosDashboard = () => {
               disabled={loading}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-xs uppercase tracking-[0.28em] text-gray-600 transition hover:border-blue-500/50 hover:text-blue-600 disabled:opacity-60"
             >
-              <FaSyncAlt className={loading ? "animate-spin" : ""} /> {loading ? "Actualizando…" : "Actualizar"}
+              <FaSyncAlt aria-hidden="true" className={loading ? "animate-spin" : undefined} /> {loading ? "Actualizando…" : "Actualizar"}
             </button>
             <button
               type="button"
               onClick={openCreateModal}
               className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-xs uppercase tracking-[0.28em] text-blue-600 transition hover:bg-blue-50"
             >
-              <FaPlus /> Nuevo producto
+              <FaPlus aria-hidden="true" /> Nuevo producto
             </button>
           </div>
         </div>
@@ -248,14 +258,14 @@ const ProductosDashboard = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="uppercase tracking-[0.32em] text-gray-600 text-[10px]">Total productos</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-900">
-                  {totalProductos.toString().padStart(2, "0")}
+                <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
+                  {productStats.total.toString().padStart(2, "0")}
                 </p>
                 <p className="mt-3 text-xs text-gray-600">
                   En catálogo
                 </p>
               </div>
-              <FaBox className="text-2xl text-blue-600" />
+              <FaBox aria-hidden="true" className="text-2xl text-blue-600" />
             </div>
           </div>
           
@@ -263,14 +273,14 @@ const ProductosDashboard = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="uppercase tracking-[0.32em] text-gray-600 text-[10px]">Activos</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-900">
-                  {productosActivos.toString().padStart(2, "0")}
+                <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
+                  {productStats.activos.toString().padStart(2, "0")}
                 </p>
                 <p className="mt-3 text-xs text-emerald-400">
                   Disponibles
                 </p>
               </div>
-              <FaCheckCircle className="text-2xl text-emerald-400" />
+              <FaCheckCircle aria-hidden="true" className="text-2xl text-emerald-400" />
             </div>
           </div>
 
@@ -278,14 +288,14 @@ const ProductosDashboard = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="uppercase tracking-[0.32em] text-gray-600 text-[10px]">Valor inventario</p>
-                <p className="mt-2 text-2xl font-semibold text-gray-900">
-                  {currencyFormatter.format(valorInventario)}
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-gray-900">
+                  {currencyFormatter.format(productStats.valorInventario)}
                 </p>
                 <p className="mt-3 text-xs text-gray-600">
                   Total en stock
                 </p>
               </div>
-              <FaMoneyBillWave className="text-2xl text-amber-400" />
+              <FaMoneyBillWave aria-hidden="true" className="text-2xl text-amber-400" />
             </div>
           </div>
 
@@ -293,14 +303,14 @@ const ProductosDashboard = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="uppercase tracking-[0.32em] text-gray-600 text-[10px]">Stock bajo</p>
-                <p className="mt-2 text-3xl font-semibold text-red-400">
-                  {stockBajo.toString().padStart(2, "0")}
+                <p className="mt-2 text-3xl font-semibold tabular-nums text-red-400">
+                  {productStats.stockBajo.toString().padStart(2, "0")}
                 </p>
                 <p className="mt-3 text-xs text-red-400/70">
                   Menos de 5 unidades
                 </p>
               </div>
-              <FaExclamationTriangle className="text-2xl text-red-400" />
+              <FaExclamationTriangle aria-hidden="true" className="text-2xl text-red-400" />
             </div>
           </div>
         </div>
@@ -308,16 +318,18 @@ const ProductosDashboard = () => {
         {/* Buscador */}
         <div className="flex items-center gap-3">
           <div className="relative w-full max-w-md">
-            <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+            <FaSearch aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
             <input
+              type="search"
+              aria-label="Buscar productos"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nombre, categoría o descripción"
-              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
             />
           </div>
           <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-xs uppercase tracking-[0.28em] text-blue-600">
-            <span className="font-semibold">{filtered.length}</span> productos
+            <span className="font-semibold tabular-nums">{filtered.length}</span> productos
           </div>
         </div>
 
@@ -360,14 +372,14 @@ const ProductosDashboard = () => {
                           />
                         ) : (
                           <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-gray-200 bg-white text-blue-600">
-                            <FaBox />
+                            <FaBox aria-hidden="true" />
                           </div>
                         )}
                         <div>
                           <p className="font-semibold text-gray-900">{producto.nombre}</p>
-                          {producto.descripcion && (
+                          {producto.descripcion ? (
                             <p className="text-xs text-gray-600 line-clamp-1">{producto.descripcion}</p>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -380,12 +392,12 @@ const ProductosDashboard = () => {
                         <span className="text-gray-900/30">Sin categoría</span>
                       )}
                     </td>
-                    <td className="px-5 py-4 font-semibold text-gray-900">
+                    <td className="px-5 py-4 font-semibold tabular-nums text-gray-900">
                       {currencyFormatter.format(producto.precio)}
                     </td>
                     <td className="px-5 py-4">
                       <span
-                        className={`font-semibold ${
+                        className={`font-semibold tabular-nums ${
                           producto.stock < 5 ? "text-red-300" : producto.stock < 10 ? "text-yellow-300" : "text-emerald-300"
                         }`}
                       >
@@ -402,7 +414,7 @@ const ProductosDashboard = () => {
                             : "border-red-400/35 bg-red-500/12 text-red-300 hover:bg-red-500/20"
                         }`}
                       >
-                        {producto.activo ? <FaToggleOn /> : <FaToggleOff />}
+                        {producto.activo ? <FaToggleOn aria-hidden="true" /> : <FaToggleOff aria-hidden="true" />}
                         {producto.activo ? "Activo" : "Inactivo"}
                       </button>
                     </td>
@@ -413,14 +425,14 @@ const ProductosDashboard = () => {
                           onClick={() => openEditModal(producto)}
                           className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-blue-600 transition hover:bg-blue-50"
                         >
-                          <FaEdit /> Editar
+                          <FaEdit aria-hidden="true" /> Editar
                         </button>
                         <button
                           type="button"
                           onClick={() => openDeleteModal(producto)}
                           className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-red-400 transition hover:bg-red-500/15"
                         >
-                          <FaTrash /> Eliminar
+                          <FaTrash aria-hidden="true" /> Eliminar
                         </button>
                       </div>
                     </td>
@@ -431,11 +443,11 @@ const ProductosDashboard = () => {
           </table>
         </div>
 
-        {error && (
+        {error ? (
           <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Modal Crear/Editar */}
@@ -474,7 +486,7 @@ const ProductosDashboard = () => {
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 required
-                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                 placeholder="Gel Ultra Strong"
               />
             </label>
@@ -485,8 +497,8 @@ const ProductosDashboard = () => {
                 type="text"
                 value={formData.categoria}
                 onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                placeholder="Gel, Pomada, Cera..."
+                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+                placeholder="Gel, Pomada, Cera…"
               />
             </label>
           </div>
@@ -501,7 +513,7 @@ const ProductosDashboard = () => {
                 value={formData.precio}
                 onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
                 required
-                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </label>
 
@@ -513,7 +525,7 @@ const ProductosDashboard = () => {
                 value={formData.stock}
                 onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
                 required
-                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </label>
           </div>
@@ -524,8 +536,8 @@ const ProductosDashboard = () => {
               type="url"
               value={formData.imagenUrl}
               onChange={(e) => setFormData({ ...formData, imagenUrl: e.target.value })}
-              className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-              placeholder="https://..."
+              className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+              placeholder="https://…"
             />
           </label>
 
@@ -535,8 +547,8 @@ const ProductosDashboard = () => {
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               rows={3}
-              className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-              placeholder="Descripción del producto..."
+              className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+              placeholder="Descripción del producto…"
             />
           </label>
 
@@ -550,11 +562,11 @@ const ProductosDashboard = () => {
             <span className="text-sm text-gray-900">Producto activo (visible en la tienda)</span>
           </label>
 
-          {formErrors.general && (
+          {formErrors.general ? (
             <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {formErrors.general}
             </div>
-          )}
+          ) : null}
         </form>
       </AdminModal>
 

@@ -1,5 +1,7 @@
+import { memo } from "react";
 import { motion } from "framer-motion";
 
+// rendering-hoist-jsx: static data hoisted outside component
 const resaltados = [
   {
     titulo: "Turnos a tu ritmo",
@@ -15,13 +17,30 @@ const resaltados = [
   },
 ];
 
+// rendering-hoist-jsx: static background overlay
+const bgOverlay = (
+  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(10,25,41,0.35),_transparent_70%)]" />
+);
+
+// rerender-memo: memoized highlight card
+const HighlightCard = memo(function HighlightCard({ titulo, detalle }: { titulo: string; detalle: string }) {
+  return (
+    <div
+      className="rounded-[24px] border border-[#2A2A2A] bg-[#2A2A2A] p-8 text-left shadow-[0_24px_60px_rgba(0,0,0,0.45)] transition-transform duration-300 hover:-translate-y-1"
+    >
+      <h3 className="text-xl text-[#FAF8F3]">{titulo}</h3>
+      <p className="mt-4 text-sm leading-relaxed text-[#FAF8F3]/75">{detalle}</p>
+    </div>
+  );
+});
+
 const FilosofiaSunsetz = () => {
   return (
     <section 
       className="relative bg-[#0D0D0D] py-24 text-[#FAF8F3] lg:py-28"
       aria-labelledby="philosophy-title"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(10,25,41,0.35),_transparent_70%)]" />
+      {bgOverlay}
       <div className="relative mx-auto flex max-w-6xl flex-col gap-14 px-6 lg:flex-row lg:items-center lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -50,17 +69,7 @@ const FilosofiaSunsetz = () => {
           className="flex-1 grid gap-6 sm:grid-cols-3"
         >
           {resaltados.map((item) => (
-            <div
-              key={item.titulo}
-              className="rounded-[24px] border border-[#2A2A2A] bg-[#2A2A2A] p-8 text-left shadow-[0_24px_60px_rgba(0,0,0,0.45)] transition-transform duration-300 hover:-translate-y-1"
-            >
-              <h3
-                className="text-xl text-[#FAF8F3]"
-              >
-                {item.titulo}
-              </h3>
-              <p className="mt-4 text-sm leading-relaxed text-[#FAF8F3]/75">{item.detalle}</p>
-            </div>
+            <HighlightCard key={item.titulo} titulo={item.titulo} detalle={item.detalle} />
           ))}
         </motion.div>
       </div>

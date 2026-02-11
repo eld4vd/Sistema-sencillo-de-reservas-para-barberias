@@ -301,31 +301,40 @@ const ReservasDashboard = () => {
     });
   }, [filtered]);
 
-  const totalReservas = reservas.length;
-  const reservasPagadas = reservas.filter(
-    (item) => item.estado === "Pagada"
-  ).length;
-  const reservasCompletadas = reservas.filter(
-    (item) => item.estado === "Completada"
-  ).length;
-  const reservasCanceladas = reservas.filter(
-    (item) => item.estado === "Cancelada"
-  ).length;
-  const proximasReservas = reservas.filter((item) => {
-    const timestamp = new Date(item.fechaHora).getTime();
-    return (
-      !Number.isNaN(timestamp) &&
-      timestamp >= Date.now() &&
-      item.estado !== "Cancelada"
-    );
-  }).length;
+  // js-combine-iterations: consolidar 6 iteraciones en 1 solo pase
+  const stats = useMemo(() => {
+    const now = Date.now();
+    let pagadas = 0;
+    let completadas = 0;
+    let canceladas = 0;
+    let proximas = 0;
+    let revenue = 0;
 
-  const projectedRevenue = reservas.reduce((acc, cita) => {
-    const price = getServicioPrecio(cita.servicio);
-    if (!price) return acc;
-    if (cita.estado === "Cancelada") return acc;
-    return acc + price;
-  }, 0);
+    for (const cita of reservas) {
+      if (cita.estado === "Pagada") pagadas++;
+      else if (cita.estado === "Completada") completadas++;
+      else if (cita.estado === "Cancelada") canceladas++;
+
+      const timestamp = new Date(cita.fechaHora).getTime();
+      if (!Number.isNaN(timestamp) && timestamp >= now && cita.estado !== "Cancelada") {
+        proximas++;
+      }
+
+      if (cita.estado !== "Cancelada") {
+        const price = getServicioPrecio(cita.servicio);
+        if (price) revenue += price;
+      }
+    }
+
+    return {
+      total: reservas.length,
+      pagadas,
+      completadas,
+      canceladas,
+      proximas,
+      projectedRevenue: revenue,
+    };
+  }, [reservas]);
 
   const nextReservation = useMemo(() => {
     const upcoming = reservas
@@ -395,15 +404,16 @@ const ReservasDashboard = () => {
     };
   }, [invoiceTarget]);
 
-  const closeModal = () => {
+  // rerender-memo: useCallback for close handlers
+  const closeModal = useCallback(() => {
     setSelected(null);
     setDetailErrors({});
     setStatusDraft("Pagada");
     setNotesDraft("");
     setDetailMutation("idle");
-  };
+  }, []);
 
-  const closeInvoiceModal = () => {
+  const closeInvoiceModal = useCallback(() => {
     if (copyResetTimeout.current) {
       window.clearTimeout(copyResetTimeout.current);
       copyResetTimeout.current = null;
@@ -414,7 +424,7 @@ const ReservasDashboard = () => {
     setInvoiceCopyStatus("idle");
     setInvoicePdfStatus("idle");
     setInvoiceGenerated(false);
-  };
+  }, []);
 
   const handleUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -570,15 +580,15 @@ const ReservasDashboard = () => {
     }
   };
 
-  const openCancelModal = (cita: Cita) => {
+  const openCancelModal = useCallback((cita: Cita) => {
     setCancelTarget(cita);
     setCancelMutation("idle");
-  };
+  }, []);
 
-  const closeCancelModal = () => {
+  const closeCancelModal = useCallback(() => {
     setCancelTarget(null);
     setCancelMutation("idle");
-  };
+  }, []);
 
   const handleConfirmCancel = async () => {
     if (!cancelTarget) return;
@@ -670,7 +680,7 @@ const ReservasDashboard = () => {
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs uppercase tracking-[0.24em] text-gray-700 transition hover:border-blue-500 hover:text-blue-600 disabled:opacity-60"
               title="Actualizar reservas"
             >
-              <FaSyncAlt className={loading || refreshing ? "animate-spin" : ""} />{" "}
+              <FaSyncAlt aria-hidden="true" className={loading || refreshing ? "animate-spin" : undefined} />{" "}
               {loading
                 ? "Cargando…"
                 : refreshing
@@ -699,12 +709,12 @@ const ReservasDashboard = () => {
               <span className="text-[10px] uppercase tracking-[0.28em] text-gray-500">
                 Total registros
               </span>
-              <FaCalendarAlt className="text-blue-600" />
+              <FaCalendarAlt aria-hidden="true" className="text-blue-600" />
             </div>
             <p
-              className="mt-3 text-3xl font-semibold text-gray-900"
+              className="mt-3 text-3xl font-semibold tabular-nums text-gray-900"
             >
-              {totalReservas.toString().padStart(2, "0")}
+              {stats.total.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-gray-700">
               Acumulado histórico
@@ -715,15 +725,15 @@ const ReservasDashboard = () => {
               <span className="text-[10px] uppercase tracking-[0.28em] text-gray-500">
                 Pagadas
               </span>
-              <FaFileInvoiceDollar className="text-amber-400" />
+              <FaFileInvoiceDollar aria-hidden="true" className="text-amber-400" />
             </div>
             <p
-              className="mt-3 text-3xl font-semibold text-gray-900"
+              className="mt-3 text-3xl font-semibold tabular-nums text-gray-900"
             >
-              {reservasPagadas.toString().padStart(2, "0")}
+              {stats.pagadas.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-gray-700">
-              Listas para facturar ({proximasReservas} próximas)
+              Listas para facturar ({stats.proximas} próximas)
             </p>
           </div>
           <div className="rounded-2xl border border-gray-300 bg-white p-5">
@@ -731,12 +741,12 @@ const ReservasDashboard = () => {
               <span className="text-[10px] uppercase tracking-[0.28em] text-gray-500">
                 Completadas
               </span>
-              <FaCheckCircle className="text-emerald-400" />
+              <FaCheckCircle aria-hidden="true" className="text-emerald-400" />
             </div>
             <p
-              className="mt-3 text-3xl font-semibold text-gray-900"
+              className="mt-3 text-3xl font-semibold tabular-nums text-gray-900"
             >
-              {reservasCompletadas.toString().padStart(2, "0")}
+              {stats.completadas.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-gray-700">
               Experiencias finalizadas
@@ -747,12 +757,12 @@ const ReservasDashboard = () => {
               <span className="text-[10px] uppercase tracking-[0.28em] text-gray-500">
                 Canceladas
               </span>
-              <FaTimesCircle className="text-red-400" />
+              <FaTimesCircle aria-hidden="true" className="text-red-400" />
             </div>
             <p
-              className="mt-3 text-3xl font-semibold text-gray-900"
+              className="mt-3 text-3xl font-semibold tabular-nums text-gray-900"
             >
-              {reservasCanceladas.toString().padStart(2, "0")}
+              {stats.canceladas.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-gray-700">
               Para revisar con cliente
@@ -763,12 +773,12 @@ const ReservasDashboard = () => {
               <span className="text-[10px] uppercase tracking-[0.28em] text-gray-500">
                 Proyección
               </span>
-              <FaRegCalendarCheck className="text-blue-600" />
+              <FaRegCalendarCheck aria-hidden="true" className="text-blue-600" />
             </div>
             <p
-              className="mt-3 text-3xl font-semibold text-gray-900"
+              className="mt-3 text-3xl font-semibold tabular-nums text-gray-900"
             >
-              {currencyFormatter.format(projectedRevenue)}
+              {currencyFormatter.format(stats.projectedRevenue)}
             </p>
             <p className="mt-2 text-xs text-gray-700">
               Basado en reservas vigentes
@@ -793,7 +803,7 @@ const ReservasDashboard = () => {
               </div>
               <div className="flex flex-col items-end gap-3 text-right md:flex-row md:items-center md:text-left">
                 <div className="flex items-center gap-3 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-blue-600">
-                  <FaClock />
+                  <FaClock aria-hidden="true" />
                   <div className="text-xs uppercase tracking-[0.24em]">
                     {formatDate(nextReservation.fechaHora)} ·{" "}
                     {formatTime(nextReservation.fechaHora)}
@@ -811,19 +821,21 @@ const ReservasDashboard = () => {
           <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-2">
               <p className="text-sm text-gray-700">
-                Mostrando <span className="font-semibold text-gray-900">{filteredSorted.length}</span> reservas activas
+                Mostrando <span className="font-semibold tabular-nums text-gray-900">{filteredSorted.length}</span> reservas activas
                 <span className="ml-2 text-xs text-gray-700">
                   (Completadas y canceladas en página dedicada)
                 </span>
               </p>
             </div>
             <div className="relative w-full max-w-xs">
-              <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-700" />
+              <FaSearch aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-700" />
               <input
+                type="search"
+                aria-label="Buscar reservas"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar por cliente, servicio o barbero"
-                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </div>
           </div>
@@ -878,7 +890,7 @@ const ReservasDashboard = () => {
                         <td className="py-4">
                           <div className="flex items-center gap-4">
                             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-600">
-                              <FaUser />
+                              <FaUser aria-hidden="true" />
                             </div>
                             <div>
                               <p className="font-semibold text-gray-900">
@@ -942,7 +954,7 @@ const ReservasDashboard = () => {
                           <span
                             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.28em] ${meta.classes}`}
                           >
-                            <StatusIcon className="text-sm" />
+                            <StatusIcon aria-hidden="true" className="text-sm" />
                             {cita.estado}
                           </span>
                         </td>
@@ -956,7 +968,7 @@ const ReservasDashboard = () => {
                                   disabled={quickUpdateId === cita.id}
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-100 disabled:opacity-60"
                                 >
-                                  <FaCheckCircle />
+                                  <FaCheckCircle aria-hidden="true" />
                                   {quickUpdateId === cita.id
                                     ? "Marcando…"
                                     : "Completar"}
@@ -966,7 +978,7 @@ const ReservasDashboard = () => {
                                   onClick={() => openCancelModal(cita)}
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:border-red-400 hover:bg-red-100"
                                 >
-                                  <FaTimesCircle />
+                                  <FaTimesCircle aria-hidden="true" />
                                   Cancelar
                                 </button>
                               </>
@@ -976,7 +988,7 @@ const ReservasDashboard = () => {
                               onClick={() => setSelected(cita)}
                               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 transition hover:border-blue-500 hover:text-blue-600"
                             >
-                              <FaEye /> Detalle
+                              <FaEye aria-hidden="true" /> Detalle
                             </button>
                           </div>
                         </td>
@@ -1101,7 +1113,7 @@ const ReservasDashboard = () => {
                     <span
                       className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.28em] ${meta.classes}`}
                     >
-                      <StatusIcon className="text-sm" />
+                      <StatusIcon aria-hidden="true" className="text-sm" />
                       {selected.estado}
                     </span>
                   );
@@ -1123,7 +1135,7 @@ const ReservasDashboard = () => {
                   onChange={(event) =>
                     setStatusDraft(event.target.value as EstadoGestionable)
                   }
-                  className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={selected?.estado === "Cancelada"}
                 >
                   {(["Pagada", "Completada"] as EstadoGestionable[]).map(
@@ -1146,10 +1158,10 @@ const ReservasDashboard = () => {
                   Radar operativo
                 </p>
                 <ul className="mt-3 space-y-2">
-                  <li>Reservas pagadas: {reservasPagadas}</li>
-                  <li>Próximas 48h: {proximasReservas}</li>
-                  <li>Completadas: {reservasCompletadas}</li>
-                  <li>Canceladas: {reservasCanceladas}</li>
+                  <li>Reservas pagadas: {stats.pagadas}</li>
+                  <li>Próximas 48h: {stats.proximas}</li>
+                  <li>Completadas: {stats.completadas}</li>
+                  <li>Canceladas: {stats.canceladas}</li>
                 </ul>
               </div>
             </div>
@@ -1162,7 +1174,7 @@ const ReservasDashboard = () => {
                 value={notesDraft}
                 onChange={(event) => setNotesDraft(event.target.value)}
                 placeholder="Agrega instrucciones internas, preferencias del cliente o seguimiento post-servicio"
-                className="min-h-[120px] rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+                className="min-h-[120px] rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </label>
 
@@ -1363,7 +1375,7 @@ const ReservasDashboard = () => {
                   Total a facturar
                 </p>
                 <p
-                  className="mt-2 text-3xl font-semibold text-gray-900"
+                  className="mt-2 text-3xl font-semibold tabular-nums text-gray-900"
                 >
                   {currencyFormatter.format(invoiceTotal)}
                 </p>
@@ -1459,7 +1471,7 @@ const ReservasDashboard = () => {
         {cancelTarget ? (
           <div className="space-y-5 text-sm">
             <div className="rounded-2xl border border-red-300 bg-red-50 p-5 text-center">
-              <FaTimesCircle className="mx-auto text-5xl text-red-400" />
+              <FaTimesCircle aria-hidden="true" className="mx-auto text-5xl text-red-400" />
               <p className="mt-4 text-base font-semibold text-gray-900">
                 ¿Estás seguro de cancelar esta reserva?
               </p>

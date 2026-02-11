@@ -1,3 +1,6 @@
+// rendering-hoist-jsx: hoist static array outside component
+const DASHBOARD_SECTIONS = ["Reservas", "Servicios", "Peluqueros", "Pagos"] as const;
+
 const DashboardHome = () => {
   return (
     <div className="space-y-6">
@@ -10,7 +13,7 @@ const DashboardHome = () => {
         </p>
       </section>
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {["Reservas", "Servicios", "Peluqueros", "Pagos"].map((item) => (
+        {DASHBOARD_SECTIONS.map((item) => (
           <article
             key={item}
             className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"

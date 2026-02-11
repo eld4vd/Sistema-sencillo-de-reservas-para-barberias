@@ -219,27 +219,15 @@ const ReservasCompletadasDashboard = () => {
       
       try {
         const response = await citasService.list();
-        const completadas = response.filter((cita) => cita.estado === "Completada");
-        const canceladasData = response.filter((cita) => cita.estado === "Cancelada");
+        const completadas: Cita[] = [];
+        const canceladasData: Cita[] = [];
+        for (const cita of response) {
+          if (cita.estado === "Completada") completadas.push(cita);
+          else if (cita.estado === "Cancelada") canceladasData.push(cita);
+        }
         
-        const sortedCompletadas = [...completadas].sort((a, b) => {
-          if (sortBy === "fechaCreacion") {
-            return new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime();
-          } else {
-            return new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime();
-          }
-        });
-        
-        const sortedCanceladas = [...canceladasData].sort((a, b) => {
-          if (sortBy === "fechaCreacion") {
-            return new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime();
-          } else {
-            return new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime();
-          }
-        });
-        
-        setReservas(sortedCompletadas);
-        setCanceladas(sortedCanceladas);
+        setReservas(completadas);
+        setCanceladas(canceladasData);
       } catch (err) {
         setError(getErrorMessage(err));
       } finally {
@@ -251,35 +239,23 @@ const ReservasCompletadasDashboard = () => {
         isLoadingRef.current = false;
       }
     },
-    [sortBy],
+    [],
   );
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Re-ordenar cuando cambia el criterio de ordenamiento (sin recargar desde API)
-  useEffect(() => {
-    setReservas((prev) => {
-      if (prev.length === 0) return prev;
-      return [...prev].sort((a, b) => {
-        if (sortBy === "fechaCreacion") {
-          return new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime();
-        }
-        return new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime();
-      });
-    });
-
-    setCanceladas((prev) => {
-      if (prev.length === 0) return prev;
-      return [...prev].sort((a, b) => {
-        if (sortBy === "fechaCreacion") {
-          return new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime();
-        }
-        return new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime();
-      });
-    });
-  }, [sortBy]);
+  // Derived sorted state — no extra renders from useEffect + setState
+  const sortFn = useCallback(
+    (a: Cita, b: Cita) =>
+      sortBy === "fechaCreacion"
+        ? new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime()
+        : new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime(),
+    [sortBy],
+  );
+  const sortedReservas = useMemo(() => [...reservas].sort(sortFn), [reservas, sortFn]);
+  const sortedCanceladas = useMemo(() => [...canceladas].sort(sortFn), [canceladas, sortFn]);
 
   useEffect(
     () => () => {
@@ -290,32 +266,24 @@ const ReservasCompletadasDashboard = () => {
     [],
   );
 
-  const barberOptions = useMemo(() => {
-    const map = new Map<number, string>();
-    reservas.forEach((cita) => {
-      const id = getPeluqueroId(cita.peluquero);
-      if (!id) return;
-      if (!map.has(id)) {
-        map.set(id, getPeluqueroNombre(cita.peluquero));
-      }
-    });
-    return Array.from(map.entries())
-      .map(([id, nombre]) => ({ id, nombre }))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
-  }, [reservas]);
-
-  const serviceOptions = useMemo(() => {
-    const map = new Map<number, string>();
-    reservas.forEach((cita) => {
-      const id = getServicioId(cita.servicio);
-      if (!id) return;
-      if (!map.has(id)) {
-        map.set(id, getServicioNombre(cita.servicio));
-      }
-    });
-    return Array.from(map.entries())
-      .map(([id, nombre]) => ({ id, nombre }))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  // Combined: single pass to extract both barber and service filter options
+  const { barberOptions, serviceOptions } = useMemo(() => {
+    const barberMap = new Map<number, string>();
+    const serviceMap = new Map<number, string>();
+    for (const cita of reservas) {
+      const bId = getPeluqueroId(cita.peluquero);
+      if (bId && !barberMap.has(bId)) barberMap.set(bId, getPeluqueroNombre(cita.peluquero));
+      const sId = getServicioId(cita.servicio);
+      if (sId && !serviceMap.has(sId)) serviceMap.set(sId, getServicioNombre(cita.servicio));
+    }
+    return {
+      barberOptions: Array.from(barberMap.entries())
+        .map(([id, nombre]) => ({ id, nombre }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+      serviceOptions: Array.from(serviceMap.entries())
+        .map(([id, nombre]) => ({ id, nombre }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+    };
   }, [reservas]);
 
   const applyFilters = (citasList: Cita[]) => {
@@ -356,9 +324,9 @@ const ReservasCompletadasDashboard = () => {
     });
   };
 
-  const filtered = useMemo(() => applyFilters(reservas), [reservas, search, fromDate, toDate, barberFilter, serviceFilter]);
+  const filtered = useMemo(() => applyFilters(sortedReservas), [sortedReservas, search, fromDate, toDate, barberFilter, serviceFilter]);
 
-  const filteredCanceladas = useMemo(() => applyFilters(canceladas), [canceladas, search, fromDate, toDate, barberFilter, serviceFilter]);
+  const filteredCanceladas = useMemo(() => applyFilters(sortedCanceladas), [sortedCanceladas, search, fromDate, toDate, barberFilter, serviceFilter]);
 
   const groupCitasByDate = (citasList: Cita[]): GroupedCitas[] => {
     const map = new Map<string, GroupedCitas>();
@@ -386,52 +354,57 @@ const ReservasCompletadasDashboard = () => {
 
   const groupedCanceladas = useMemo<GroupedCitas[]>(() => groupCitasByDate(filteredCanceladas), [filteredCanceladas]);
 
-  const totalReservas = filtered.length;
-  const totalMonto = filtered.reduce((acc, cita) => acc + (getServicioPrecio(cita.servicio) ?? 0), 0);
-  const uniqueClientes = useMemo(() => {
-    const set = new Set<string>();
-    filtered.forEach((cita) => set.add(`${cita.clienteEmail}-${cita.clienteNombre}`));
-    return set.size;
-  }, [filtered]);
-
-  const ticketPromedio = totalReservas > 0 ? totalMonto / totalReservas : 0;
-
-  const barberBreakdown = useMemo(() => {
-    const map = new Map<number, { nombre: string; count: number; total: number }>();
-    filtered.forEach((cita) => {
+  // Consolidated: single pass for totalMonto, uniqueClientes, barberBreakdown
+  const completadasStats = useMemo(() => {
+    let totalMonto = 0;
+    const clienteSet = new Set<string>();
+    const barberMap = new Map<number, { nombre: string; count: number; total: number }>();
+    for (const cita of filtered) {
+      const precio = getServicioPrecio(cita.servicio) ?? 0;
+      totalMonto += precio;
+      clienteSet.add(`${cita.clienteEmail}-${cita.clienteNombre}`);
       const id = getPeluqueroId(cita.peluquero);
-      if (!id) return;
-      const nombre = getPeluqueroNombre(cita.peluquero);
-      const amount = getServicioPrecio(cita.servicio) ?? 0;
-      const current = map.get(id);
-      if (current) {
-        current.count += 1;
-        current.total += amount;
-      } else {
-        map.set(id, { nombre, count: 1, total: amount });
+      if (id) {
+        const current = barberMap.get(id);
+        if (current) {
+          current.count += 1;
+          current.total += precio;
+        } else {
+          barberMap.set(id, { nombre: getPeluqueroNombre(cita.peluquero), count: 1, total: precio });
+        }
       }
-    });
-    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+    }
+    return {
+      totalMonto,
+      uniqueClientes: clienteSet.size,
+      barberBreakdown: Array.from(barberMap.values()).sort((a, b) => b.count - a.count),
+    };
   }, [filtered]);
 
-  const topBarber = barberBreakdown[0];
+  const totalReservas = filtered.length;
+  const ticketPromedio = totalReservas > 0 ? completadasStats.totalMonto / totalReservas : 0;
+  const topBarber = completadasStats.barberBreakdown[0];
 
-  // Métricas para canceladas
-  const totalCanceladas = filteredCanceladas.length;
-  const montoPerdido = filteredCanceladas.reduce((acc, cita) => acc + (getServicioPrecio(cita.servicio) ?? 0), 0);
-  const uniqueClientesCanceladas = useMemo(() => {
-    const set = new Set<string>();
-    filteredCanceladas.forEach((cita) => set.add(`${cita.clienteEmail}-${cita.clienteNombre}`));
-    return set.size;
+  // Consolidated: single pass for canceladas stats
+  const canceladasStats = useMemo(() => {
+    let montoPerdido = 0;
+    const clienteSet = new Set<string>();
+    for (const cita of filteredCanceladas) {
+      montoPerdido += getServicioPrecio(cita.servicio) ?? 0;
+      clienteSet.add(`${cita.clienteEmail}-${cita.clienteNombre}`);
+    }
+    return { montoPerdido, uniqueClientes: clienteSet.size };
   }, [filteredCanceladas]);
 
-  const openInvoiceModal = (cita: Cita) => {
+  const totalCanceladas = filteredCanceladas.length;
+
+  const openInvoiceModal = useCallback((cita: Cita) => {
     setInvoiceTarget(cita);
     setInvoiceCopyStatus("idle");
     setInvoicePdfStatus("idle");
-  };
+  }, []);
 
-  const closeInvoiceModal = () => {
+  const closeInvoiceModal = useCallback(() => {
     setInvoiceTarget(null);
     setInvoiceCopyStatus("idle");
     setInvoicePdfStatus("idle");
@@ -439,7 +412,7 @@ const ReservasCompletadasDashboard = () => {
       window.clearTimeout(copyResetTimeout.current);
       copyResetTimeout.current = null;
     }
-  };
+  }, []);
 
   const invoiceIssuedAt = useMemo(() => (invoiceTarget ? new Date() : null), [invoiceTarget]);
 
@@ -553,18 +526,18 @@ const ReservasCompletadasDashboard = () => {
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     if (refreshing) return;
     loadData("refresh");
-  };
+  }, [refreshing, loadData]);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setSearch("");
     setFromDate("");
     setToDate("");
     setBarberFilter("todos");
     setServiceFilter("todos");
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -584,7 +557,7 @@ const ReservasCompletadasDashboard = () => {
             to="/admin/reservas"
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-xs uppercase tracking-[0.28em] text-gray-600 transition hover:border-blue-500/50 hover:text-blue-600"
           >
-            <FaArrowLeft /> Volver a reservas activas
+            <FaArrowLeft aria-hidden="true" /> Volver a reservas activas
           </Link>
           <button
             type="button"
@@ -592,7 +565,7 @@ const ReservasCompletadasDashboard = () => {
             disabled={refreshing}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-xs uppercase tracking-[0.28em] text-gray-600 transition hover:border-blue-500/50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <FaSyncAlt className={refreshing ? "animate-spin" : undefined} /> {refreshing ? "Actualizando…" : "Actualizar"}
+            <FaSyncAlt aria-hidden="true" className={refreshing ? "animate-spin" : undefined} /> {refreshing ? "Actualizando…" : "Actualizar"}
           </button>
         </div>
       </div>
@@ -606,12 +579,12 @@ const ReservasCompletadasDashboard = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] uppercase tracking-[0.32em] text-gray-600">Registros filtrados</p>
-              <p className="mt-2 text-4xl font-semibold">
+              <p className="mt-2 text-4xl font-semibold tabular-nums">
                 {totalReservas}
               </p>
               <p className="mt-2 text-xs text-gray-700">en {grouped.length} días operativos</p>
             </div>
-            <FaCheckCircle className="text-2xl text-emerald-400" />
+            <FaCheckCircle aria-hidden="true" className="text-2xl text-emerald-400" />
           </div>
         </motion.div>
         <motion.div
@@ -623,14 +596,14 @@ const ReservasCompletadasDashboard = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] uppercase tracking-[0.32em] text-gray-600">Ingresos estimados</p>
-              <p className="mt-2 text-3xl font-semibold">
-                {currencyFormatter.format(totalMonto)}
+              <p className="mt-2 text-3xl font-semibold tabular-nums">
+                {currencyFormatter.format(completadasStats.totalMonto)}
               </p>
               <p className="mt-2 text-xs text-gray-700">
                 Ticket promedio {currencyFormatter.format(ticketPromedio || 0)}
               </p>
             </div>
-            <FaWallet className="text-2xl text-blue-600" />
+            <FaWallet aria-hidden="true" className="text-2xl text-blue-600" />
           </div>
         </motion.div>
         <motion.div
@@ -642,14 +615,14 @@ const ReservasCompletadasDashboard = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] uppercase tracking-[0.32em] text-gray-600">Clientes únicos</p>
-              <p className="mt-2 text-4xl font-semibold">
-                {uniqueClientes}
+              <p className="mt-2 text-4xl font-semibold tabular-nums">
+                {completadasStats.uniqueClientes}
               </p>
               <p className="mt-2 text-xs text-gray-700">
                 Fidelización medida por email
               </p>
             </div>
-            <FaUsers className="text-2xl text-amber-400" />
+            <FaUsers aria-hidden="true" className="text-2xl text-amber-400" />
           </div>
         </motion.div>
         <motion.div
@@ -668,7 +641,7 @@ const ReservasCompletadasDashboard = () => {
                 {topBarber ? `${topBarber.count} servicios · ${currencyFormatter.format(topBarber.total)}` : "Filtra para ver líderes"}
               </p>
             </div>
-            <FaFileInvoiceDollar className="text-2xl text-blue-600" />
+            <FaFileInvoiceDollar aria-hidden="true" className="text-2xl text-blue-600" />
           </div>
         </motion.div>
       </div>
@@ -677,13 +650,13 @@ const ReservasCompletadasDashboard = () => {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-1 flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[220px]">
-              <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-gray-700" />
+              <FaSearch aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-gray-700" />
               <input
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Busca por cliente, servicio, barbero o notas"
-                className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </div>
             <label className="flex flex-col text-xs uppercase tracking-[0.24em] text-gray-700">
@@ -691,7 +664,7 @@ const ReservasCompletadasDashboard = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as "fechaHora" | "fechaCreacion")}
-                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               >
                 <option value="fechaCreacion">Más recientes</option>
                 <option value="fechaHora">Próximas citas</option>
@@ -703,7 +676,7 @@ const ReservasCompletadasDashboard = () => {
                 type="date"
                 value={fromDate}
                 onChange={(event) => setFromDate(event.target.value)}
-                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </label>
             <label className="flex flex-col text-xs uppercase tracking-[0.24em] text-gray-700">
@@ -712,7 +685,7 @@ const ReservasCompletadasDashboard = () => {
                 type="date"
                 value={toDate}
                 onChange={(event) => setToDate(event.target.value)}
-                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </label>
             <label className="flex flex-col text-xs uppercase tracking-[0.24em] text-gray-700">
@@ -720,7 +693,7 @@ const ReservasCompletadasDashboard = () => {
               <select
                 value={barberFilter}
                 onChange={(event) => setBarberFilter(event.target.value)}
-                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               >
                 <option value="todos">Todos</option>
                 {barberOptions.map((option) => (
@@ -735,7 +708,7 @@ const ReservasCompletadasDashboard = () => {
               <select
                 value={serviceFilter}
                 onChange={(event) => setServiceFilter(event.target.value)}
-                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="mt-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               >
                 <option value="todos">Todos</option>
                 {serviceOptions.map((option) => (
@@ -775,7 +748,7 @@ const ReservasCompletadasDashboard = () => {
               <div key={group.dateKey} className="space-y-4 rounded-2xl border border-gray-300 bg-gray-50 p-5">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div className="inline-flex items-center gap-2 text-sm text-blue-600">
-                    <FaCheckCircle className="text-[#7FD1AE]" /> {group.label}
+                    <FaCheckCircle aria-hidden="true" className="text-[#7FD1AE]" /> {group.label}
                   </div>
                   <div className="text-xs uppercase tracking-[0.28em] text-gray-600">
                     {group.citas.length === 1 ? "1 reserva" : `${group.citas.length} reservas`}
@@ -810,7 +783,7 @@ const ReservasCompletadasDashboard = () => {
                             onClick={() => openInvoiceModal(cita)}
                             className="inline-flex items-center gap-2 rounded-lg border border-blue-300 px-4 py-2 text-xs uppercase tracking-[0.28em] text-blue-600 transition hover:border-blue-500 hover:bg-blue-50"
                           >
-                            <FaFileInvoiceDollar /> Generar factura
+                            <FaFileInvoiceDollar aria-hidden="true" /> Generar factura
                           </button>
                         </div>
                       </div>
@@ -832,13 +805,13 @@ const ReservasCompletadasDashboard = () => {
           </div>
           <div className="flex flex-wrap gap-3 text-xs text-gray-700">
             <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-2">
-              <span className="font-semibold text-red-700">{totalCanceladas}</span> canceladas
+              <span className="font-semibold tabular-nums text-red-700">{totalCanceladas}</span> canceladas
             </div>
             <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-2">
-              <span className="font-semibold text-red-700">{currencyFormatter.format(montoPerdido)}</span> perdidos
+              <span className="font-semibold tabular-nums text-red-700">{currencyFormatter.format(canceladasStats.montoPerdido)}</span> perdidos
             </div>
             <div className="rounded-lg border border-gray-300 bg-white px-4 py-2">
-              <span className="font-semibold text-gray-900">{uniqueClientesCanceladas}</span> clientes
+              <span className="font-semibold tabular-nums text-gray-900">{canceladasStats.uniqueClientes}</span> clientes
             </div>
           </div>
         </div>
@@ -861,7 +834,7 @@ const ReservasCompletadasDashboard = () => {
               <div key={group.dateKey} className="space-y-4 rounded-2xl border border-red-200 bg-gray-50 p-5">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div className="inline-flex items-center gap-2 text-sm text-red-600">
-                    <FaTimesCircle className="text-red-600" /> {group.label}
+                    <FaTimesCircle aria-hidden="true" className="text-red-600" /> {group.label}
                   </div>
                   <div className="text-xs uppercase tracking-[0.28em] text-gray-600">
                     {group.citas.length === 1 ? "1 cancelación" : `${group.citas.length} cancelaciones`}
@@ -883,9 +856,9 @@ const ReservasCompletadasDashboard = () => {
                             {getServicioNombre(cita.servicio)} · {formatTime(cita.fechaHora)} · {getPeluqueroNombre(cita.peluquero)}
                           </p>
                           <p className="text-xs text-gray-700">Creada {formatDate(cita.fechaCreacion)} · #{cita.id}</p>
-                          {cita.notas && (
+                          {cita.notas ? (
                             <p className="mt-1 text-xs italic text-red-700/60">Nota: {cita.notas}</p>
-                          )}
+                          ) : null}
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <div className="text-right text-xs text-gray-700">
@@ -1019,7 +992,7 @@ const ReservasCompletadasDashboard = () => {
               </div>
               <div className="text-right">
                 <p className="text-xs uppercase tracking-[0.32em] text-gray-500">Total facturado</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-900">
+                <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
                   {currencyFormatter.format(invoiceTotal)}
                 </p>
               </div>

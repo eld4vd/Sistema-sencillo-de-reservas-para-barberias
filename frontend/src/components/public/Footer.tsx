@@ -42,7 +42,7 @@ const Footer: React.FC = () => {
                   aria-label={nombre}
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2A2A2A] text-[#FAF8F3] transition-colors hover:border-[#B8935E] hover:text-[#B8935E]"
                 >
-                  <Icono className="h-4 w-4" />
+                  <Icono className="h-4 w-4" aria-hidden="true" />
                 </a>
               ))}
             </div>

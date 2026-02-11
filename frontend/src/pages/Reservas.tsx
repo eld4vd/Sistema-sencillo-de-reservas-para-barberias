@@ -21,10 +21,10 @@ const Reservas = () => {
             </p>
             <div className="flex flex-wrap items-center gap-6 text-sm text-[#E2D7C5]">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5">
-                <FaRegClock /> Confirmación promedio 15 min hábiles
+                <FaRegClock aria-hidden="true" /> Confirmación promedio 15 min hábiles
               </span>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5">
-                <FaMapMarkerAlt /> Av. Ballivián 123 · Calacoto
+                <FaMapMarkerAlt aria-hidden="true" /> Av. Ballivián 123 · Calacoto
               </span>
             </div>
           </div>
@@ -37,24 +37,24 @@ const Reservas = () => {
             </div>
             <ul className="mt-4 space-y-3 text-sm text-[#E9DFCF]">
               <li className="flex items-center gap-3">
-                <FaCheckCircle className="text-[#9FE2BF]" />
+                <FaCheckCircle className="text-[#9FE2BF]" aria-hidden="true" />
                 Elegí el servicio y a tu barbero de confianza (o te recomendamos uno).
               </li>
               <li className="flex items-center gap-3">
-                <FaCheckCircle className="text-[#9FE2BF]" />
+                <FaCheckCircle className="text-[#9FE2BF]" aria-hidden="true" />
                 Indicá día, hora y dejá un mensaje si querés algún detalle especial.
               </li>
               <li className="flex items-center gap-3">
-                <FaCheckCircle className="text-[#9FE2BF]" />
+                <FaCheckCircle className="text-[#9FE2BF]" aria-hidden="true" />
                 Confirmá con nuestro pago simulado y recibí tu código por correo.
               </li>
             </ul>
             <Link
               to="/reservar"
-              className="group mt-6 inline-flex w-full max-w-sm items-center justify-center gap-3 self-start rounded-full bg-gradient-to-r from-[#C49A4A] via-[#D4A853] to-[#C49A4A] px-10 py-3.5 text-base font-semibold uppercase tracking-[0.18em] text-[#0A0603] shadow-[0_8px_24px_rgba(196,154,74,0.35),0_2px_8px_rgba(10,6,3,0.2)] ring-1 ring-[#E8C56A]/25 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:from-[#D4A853] hover:via-[#E0BA62] hover:to-[#D4A853] hover:text-[#0A0603] hover:shadow-[0_12px_32px_rgba(212,168,83,0.45),0_4px_12px_rgba(10,6,3,0.25)] hover:ring-[#E8C56A]/40"
+              className="group mt-6 inline-flex w-full max-w-sm items-center justify-center gap-3 self-start rounded-full bg-gradient-to-r from-[#C49A4A] via-[#D4A853] to-[#C49A4A] px-10 py-3.5 text-base font-semibold uppercase tracking-[0.18em] text-[#0A0603] shadow-[0_8px_24px_rgba(196,154,74,0.35),0_2px_8px_rgba(10,6,3,0.2)] ring-1 ring-[#E8C56A]/25 transition-[background-color,color,transform,box-shadow,ring-color] duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:from-[#D4A853] hover:via-[#E0BA62] hover:to-[#D4A853] hover:text-[#0A0603] hover:shadow-[0_12px_32px_rgba(212,168,83,0.45),0_4px_12px_rgba(10,6,3,0.25)] hover:ring-[#E8C56A]/40"
             >
               Reservar turno ahora
-              <FaArrowRight className="text-lg transition-transform group-hover:translate-x-2" />
+              <FaArrowRight className="text-lg transition-transform group-hover:translate-x-2" aria-hidden="true" />
             </Link>
             <p className="mt-3 text-xs text-[#DCCFB7]/70">
               Sin cobro adelantado. Podés mover o cancelar hasta 6 horas antes sin penalización.

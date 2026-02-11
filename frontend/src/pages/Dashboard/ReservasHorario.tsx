@@ -89,9 +89,9 @@ const DashboardReservasHorario = () => {
     loadReservas({ force: true });
   }, [loadReservas, sortBy]);
 
-  const handleManualRefresh = () => {
+  const handleManualRefresh = useCallback(() => {
     loadReservas();
-  };
+  }, [loadReservas]);
 
   const dateInputValue = useMemo(
     () => toDateInputValue(selectedDate),
@@ -121,19 +121,21 @@ const DashboardReservasHorario = () => {
   );
 
   const totalReservas = reservas.length;
-  const reservasFuturas = useMemo(
-    () =>
-      reservas.filter((cita) => {
+  // Consolidated: single pass for both futuras and canceladas counts
+  const reservasStats = useMemo(() => {
+    const now = Date.now();
+    let futuras = 0;
+    let canceladas = 0;
+    for (const cita of reservas) {
+      if (cita.estado === "Cancelada") {
+        canceladas += 1;
+      } else {
         const timestamp = new Date(cita.fechaHora).getTime();
-        return !Number.isNaN(timestamp) && timestamp >= Date.now() && cita.estado !== "Cancelada";
-      }).length,
-    [reservas]
-  );
-
-  const reservasCanceladas = useMemo(
-    () => reservas.filter((cita) => cita.estado === "Cancelada").length,
-    [reservas]
-  );
+        if (!Number.isNaN(timestamp) && timestamp >= now) futuras += 1;
+      }
+    }
+    return { futuras, canceladas };
+  }, [reservas]);
 
   return (
     <div className="space-y-6">
@@ -141,7 +143,7 @@ const DashboardReservasHorario = () => {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#B8935E]/40 bg-[#B8935E]/10 px-4 py-1 text-xs uppercase tracking-[0.32em] text-[#B8935E]">
-              <FaCalendarAlt className="text-[#B8935E]" /> Horario integral de reservas
+              <FaCalendarAlt aria-hidden="true" className="text-[#B8935E]" /> Horario integral de reservas
             </div>
             <h2 className="text-3xl font-bold text-[#FAF8F3]">
               Vista semanal inteligente
@@ -157,7 +159,7 @@ const DashboardReservasHorario = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as "fechaHora" | "fechaCreacion")}
-                className="mt-1 rounded-lg border border-[#2A2A2A] bg-[#0F0F0F] px-3 py-2 text-sm text-[#FAF8F3] focus:border-[#B8935E]/40 focus:outline-none"
+                className="mt-1 rounded-lg border border-[#2A2A2A] bg-[#0F0F0F] px-3 py-2 text-sm text-[#FAF8F3] focus:border-[#B8935E]/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               >
                 <option value="fechaHora">Por fecha de cita</option>
                 <option value="fechaCreacion">Más recientes</option>
@@ -176,7 +178,7 @@ const DashboardReservasHorario = () => {
               disabled={loading || refreshing}
               className="inline-flex items-center gap-2 rounded-full border border-[#2A2A2A] px-4 py-2 text-xs uppercase tracking-[0.28em] text-[#FAF8F3]/70 transition hover:border-[#B8935E]/40 hover:text-[#B8935E] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <FaSyncAlt className={refreshing ? "animate-spin" : ""} />
+              <FaSyncAlt aria-hidden="true" className={refreshing ? "animate-spin" : undefined} />
               {refreshing ? "Actualizando…" : "Actualizar"}
             </button>
           </div>
@@ -185,22 +187,22 @@ const DashboardReservasHorario = () => {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-2xl border border-[#2A2A2A] bg-[#0F0F0F]/80 p-4 text-sm text-[#FAF8F3]/75">
             <p className="text-[10px] uppercase tracking-[0.32em] text-[#B8935E]/70">Reservas registradas</p>
-            <p className="mt-2 text-3xl font-semibold text-[#FAF8F3]">
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-[#FAF8F3]">
               {totalReservas.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-[#FAF8F3]/45">Histórico disponible para planificación.</p>
           </div>
           <div className="rounded-2xl border border-[#2A2A2A] bg-[#0F0F0F]/80 p-4 text-sm text-[#FAF8F3]/75">
             <p className="text-[10px] uppercase tracking-[0.32em] text-[#B8935E]/70">Próximas</p>
-            <p className="mt-2 text-3xl font-semibold text-[#FAF8F3]">
-              {reservasFuturas.toString().padStart(2, "0")}
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-[#FAF8F3]">
+              {reservasStats.futuras.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-[#FAF8F3]/45">Citas vigentes con posibilidad de concierge activo.</p>
           </div>
           <div className="rounded-2xl border border-[#2A2A2A] bg-[#0F0F0F]/80 p-4 text-sm text-[#FAF8F3]/75">
             <p className="text-[10px] uppercase tracking-[0.32em] text-[#B8935E]/70">Canceladas</p>
-            <p className="mt-2 text-3xl font-semibold text-[#FAF8F3]">
-              {reservasCanceladas.toString().padStart(2, "0")}
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-[#FAF8F3]">
+              {reservasStats.canceladas.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-[#FAF8F3]/45">Útiles para liberar espacios estratégicos.</p>
           </div>
@@ -224,7 +226,7 @@ const DashboardReservasHorario = () => {
           />
           {loading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-[#0A0A0A]/70 text-sm text-[#FAF8F3]/60">
-              <FaCalendarAlt className="mb-3 animate-pulse text-3xl text-[#B8935E]" />
+              <FaCalendarAlt aria-hidden="true" className="mb-3 animate-pulse text-3xl text-[#B8935E]" />
               Cargando disponibilidad semanal…
             </div>
           ) : null}

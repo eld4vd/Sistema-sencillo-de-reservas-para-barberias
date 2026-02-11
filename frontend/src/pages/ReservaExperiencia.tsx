@@ -1,6 +1,16 @@
+import { lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
-import ReservationBookingForm from "../components/public/Reservas/ReservationBookingForm";
 import FloatingWhatsappButton from "../components/common/FloatingWhatsappButton";
+
+const ReservationBookingForm = lazy(
+  () => import("../components/public/Reservas/ReservationBookingForm")
+);
+
+const formFallback = (
+  <div className="flex min-h-[60vh] items-center justify-center">
+    <div className="h-12 w-12 animate-spin rounded-full border-2 border-[#E5D5BC] border-t-[#C79955]" />
+  </div>
+);
 
 const ReservaExperiencia = () => {
   return (
@@ -27,7 +37,9 @@ const ReservaExperiencia = () => {
       </header>
 
       <div className="flex-1">
-        <ReservationBookingForm hasNavbar={false} />
+        <Suspense fallback={formFallback}>
+          <ReservationBookingForm hasNavbar={false} />
+        </Suspense>
       </div>
 
       <FloatingWhatsappButton />

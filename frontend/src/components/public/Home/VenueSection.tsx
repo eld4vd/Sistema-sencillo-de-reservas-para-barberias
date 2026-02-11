@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, memo } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 import local from "../../../assets/images/lugar/local.jpg";
@@ -7,6 +7,7 @@ import peluqueria2 from "../../../assets/images/lugar/peluqueria2.jpg";
 import peluqueria3 from "../../../assets/images/lugar/peluqueria3.jpg";
 import cortando3 from "../../../assets/images/lugar/cortando3.jpg";
 
+// rendering-hoist-jsx: static data hoisted outside component
 const images = [
   { src: local, label: "Exterior" },
   { src: peluqueria1, label: "Interior" },
@@ -14,6 +15,41 @@ const images = [
   { src: peluqueria2, label: "Lounge" },
   { src: peluqueria3, label: "Detalles" },
 ];
+
+// rerender-memo: extract venue image card to avoid duplication & enable memoization
+const VenueImage = memo(function VenueImage({
+  src,
+  label,
+  aspect,
+  delay = 0,
+}: {
+  src: string;
+  label: string;
+  aspect: string;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ delay }}
+      className={`group relative ${aspect} overflow-hidden rounded-2xl`}
+    >
+      <img
+        src={src}
+        alt={label}
+        loading="lazy"
+        decoding="async"
+        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+      />
+      <div className="absolute inset-0 bg-black/20 transition-opacity duration-300 group-hover:opacity-0" />
+      <span className="absolute bottom-4 left-4 rounded-full bg-black/60 px-4 py-2 text-xs font-medium uppercase tracking-wider text-white backdrop-blur-sm">
+        {label}
+      </span>
+    </motion.div>
+  );
+});
 
 const VenueSection = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,39 +109,8 @@ const VenueSection = () => {
         <div className="grid gap-4 md:grid-cols-3 md:gap-6">
           {/* Columna 1 */}
           <motion.div style={{ y: y1 }} className="space-y-4 md:space-y-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="group relative aspect-[4/5] overflow-hidden rounded-2xl"
-            >
-              <img
-                src={images[0].src}
-                alt={images[0].label}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/20 transition-opacity duration-300 group-hover:opacity-0" />
-              <span className="absolute bottom-4 left-4 rounded-full bg-black/60 px-4 py-2 text-xs font-medium uppercase tracking-wider text-white backdrop-blur-sm">
-                {images[0].label}
-              </span>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="group relative aspect-square overflow-hidden rounded-2xl"
-            >
-              <img
-                src={images[1].src}
-                alt={images[1].label}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/20 transition-opacity duration-300 group-hover:opacity-0" />
-              <span className="absolute bottom-4 left-4 rounded-full bg-black/60 px-4 py-2 text-xs font-medium uppercase tracking-wider text-white backdrop-blur-sm">
-                {images[1].label}
-              </span>
-            </motion.div>
+            <VenueImage src={images[0].src} label={images[0].label} aspect="aspect-[4/5]" />
+            <VenueImage src={images[1].src} label={images[1].label} aspect="aspect-square" delay={0.1} />
           </motion.div>
 
           {/* Columna 2 */}
@@ -113,59 +118,13 @@ const VenueSection = () => {
             style={{ y: y2 }}
             className="space-y-4 pt-12 md:space-y-6 md:pt-24"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="group relative aspect-[3/4] overflow-hidden rounded-2xl"
-            >
-              <img
-                src={images[2].src}
-                alt={images[2].label}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/20 transition-opacity duration-300 group-hover:opacity-0" />
-              <span className="absolute bottom-4 left-4 rounded-full bg-black/60 px-4 py-2 text-xs font-medium uppercase tracking-wider text-white backdrop-blur-sm">
-                {images[2].label}
-              </span>
-            </motion.div>
+            <VenueImage src={images[2].src} label={images[2].label} aspect="aspect-[3/4]" />
           </motion.div>
 
           {/* Columna 3 */}
           <motion.div style={{ y: y3 }} className="space-y-4 md:space-y-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="group relative aspect-square overflow-hidden rounded-2xl"
-            >
-              <img
-                src={images[3].src}
-                alt={images[3].label}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/20 transition-opacity duration-300 group-hover:opacity-0" />
-              <span className="absolute bottom-4 left-4 rounded-full bg-black/60 px-4 py-2 text-xs font-medium uppercase tracking-wider text-white backdrop-blur-sm">
-                {images[3].label}
-              </span>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="group relative aspect-[4/5] overflow-hidden rounded-2xl"
-            >
-              <img
-                src={images[4].src}
-                alt={images[4].label}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/20 transition-opacity duration-300 group-hover:opacity-0" />
-              <span className="absolute bottom-4 left-4 rounded-full bg-black/60 px-4 py-2 text-xs font-medium uppercase tracking-wider text-white backdrop-blur-sm">
-                {images[4].label}
-              </span>
-            </motion.div>
+            <VenueImage src={images[3].src} label={images[3].label} aspect="aspect-square" />
+            <VenueImage src={images[4].src} label={images[4].label} aspect="aspect-[4/5]" delay={0.1} />
           </motion.div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -163,6 +164,9 @@ const getPeluqueroId = (
   return null;
 };
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[0-9\s-]{7,15}$/;
+
 const getBarberInitials = (nombre: string) => {
   if (!nombre || nombre.trim().length === 0) return "??";
   const words = nombre.trim().split(/\s+/);
@@ -188,6 +192,241 @@ const getInitialDateTime = () => {
   tomorrow.setDate(now.getDate() + 1);
   return { date: formatDateForInput(tomorrow), time: curatedTimeSlots[0] };
 };
+
+interface BarberCardProps {
+  barber: Peluquero;
+  isSelected: boolean;
+  isRecommended: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}
+
+const BarberCard = memo(function BarberCard({
+  barber,
+  isSelected,
+  isRecommended,
+  disabled,
+  onSelect,
+}: BarberCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={disabled}
+      className={`group relative flex flex-col items-center gap-3 rounded-2xl border-2 p-4 text-center transition-[border-color,background-color,box-shadow] duration-200 ${
+        isSelected
+          ? "border-[#AF7B3B] bg-gradient-to-br from-[#FDF5E8] to-[#F9F0E0] shadow-[0_8px_24px_rgba(175,123,59,0.25)]"
+          : "border-[#E7D9C4] bg-white hover:border-[#C79955] hover:shadow-[0_4px_16px_rgba(175,123,59,0.15)]"
+      } disabled:cursor-not-allowed disabled:opacity-60`}
+    >
+      {isRecommended ? (
+        <div className="absolute -right-2 -top-2 rounded-full bg-[#AF7B3B] px-2 py-1 text-[9px] font-bold uppercase tracking-[0.15em] text-white shadow-md">
+          ★ Top
+        </div>
+      ) : null}
+
+      {isSelected ? (
+        <div className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#AF7B3B] text-white shadow-md">
+          <FaCheckCircle className="text-sm" aria-hidden="true" />
+        </div>
+      ) : null}
+
+      <div
+        className={`relative h-20 w-20 overflow-hidden rounded-full border-4 transition-[border-color,box-shadow] ${
+          isSelected
+            ? "border-[#AF7B3B] shadow-[0_0_20px_rgba(175,123,59,0.3)]"
+            : "border-[#E7D9C4] group-hover:border-[#C79955]"
+        }`}
+      >
+        {barber.fotoUrl ? (
+          <img
+            src={barber.fotoUrl}
+            alt={barber.nombre}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const fallback = e.currentTarget
+                .nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = "flex";
+            }}
+          />
+        ) : null}
+        <div
+          className={`flex h-full w-full items-center justify-center bg-gradient-to-br from-[#AF7B3B] to-[#8B6230] text-2xl font-bold text-white ${
+            barber.fotoUrl ? "hidden" : "flex"
+          }`}
+        >
+          {getBarberInitials(barber.nombre)}
+        </div>
+      </div>
+
+      <div className="w-full space-y-1">
+        <p
+          className={`text-sm font-semibold leading-tight transition-colors ${
+            isSelected
+              ? "text-[#AF7B3B]"
+              : "text-[#1F1C16] group-hover:text-[#AF7B3B]"
+          }`}
+        >
+          {barber.nombre}
+        </p>
+        {barber.especialidad ? (
+          <p className="text-[10px] uppercase tracking-[0.15em] text-[#7C786F]">
+            {barber.especialidad}
+          </p>
+        ) : null}
+      </div>
+
+      <div
+        className={`absolute inset-0 rounded-2xl transition-opacity ${
+          isSelected
+            ? "opacity-0"
+            : "opacity-0 group-hover:opacity-100"
+        } pointer-events-none bg-gradient-to-t from-[#AF7B3B]/5 to-transparent`}
+      />
+    </button>
+  );
+});
+
+// ── Hoisted static JSX (rendering-hoist-jsx) ──
+const loadingOverlay = (
+  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70">
+    <div className="h-12 w-12 animate-spin rounded-full border-2 border-[#E5D5BC] border-t-[#C79955]" />
+  </div>
+);
+
+const formGlowBackground = (
+  <div
+    className="pointer-events-none absolute inset-x-6 -top-6 bottom-6 rounded-[36px] bg-[#C79B55]/25 blur-3xl"
+    aria-hidden
+  />
+);
+
+const paymentSecurityFooter = (
+  <p className="mt-6 text-center text-[10px] uppercase tracking-[0.32em] text-[#B1A799]">
+    Sunsetz Barber Studio · Seguridad QR certificada
+  </p>
+);
+
+const processingSpinner = (
+  <div className="h-12 w-12 animate-spin rounded-full border-2 border-[#E5D5BC] border-t-[#C79955]" />
+);
+
+// ── SuccessTicketModal (memo extracted) ──
+interface SuccessTicketModalProps {
+  successId: number;
+  onExit: () => void;
+}
+
+const SuccessTicketModal = memo(function SuccessTicketModal({
+  successId,
+  onExit,
+}: SuccessTicketModalProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 px-4 py-4 backdrop-blur-sm"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative my-auto w-full max-w-md overflow-hidden rounded-[32px] border border-[#E7D9C4] bg-white shadow-[0_32px_90px_rgba(0,0,0,0.25)]"
+      >
+        <div className="relative bg-gradient-to-br from-[#AF7B3B] to-[#8B6230] px-6 py-6 text-center">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.1),transparent_70%)]" />
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="relative mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur"
+          >
+            <FaCheckCircle className="text-4xl text-white" aria-hidden="true" />
+          </motion.div>
+          <h2 className="text-2xl text-white">¡Cita Confirmada!</h2>
+          <p className="mt-1 text-sm text-white/85">
+            Tu experiencia Sunsetz está reservada
+          </p>
+        </div>
+
+        <div className="space-y-4 p-6">
+          <div className="rounded-2xl border-2 border-dashed border-[#E7D9C4] bg-[#FDF9F1] p-4 text-center">
+            <p className="text-xs uppercase tracking-[0.24em] text-[#AF7B3B]">
+              Código de reserva
+            </p>
+            <p className="mt-2 text-3xl text-[#1F1C16]">
+              #{String(successId).padStart(4, "0")}
+            </p>
+            <p className="mt-1 text-xs text-[#7C786F]">
+              Guarda este código para tu seguimiento
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#E7D9C4] bg-[#FDF9F1] p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#AF7B3B]/10 text-[#AF7B3B]">
+                <FaMapMarkerAlt aria-hidden="true" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-xs uppercase tracking-[0.25em] text-[#9B9388]">
+                  Tu experiencia te espera en
+                </p>
+                <p className="mt-1 text-lg font-semibold text-[#1F1C16]">
+                  {SUCCESS_LOCATION_NAME}
+                </p>
+                <p className="mt-1 text-xs text-[#6F6A63]">
+                  {SUCCESS_LOCATION_ADDRESS}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-[#E7D9C4] bg-gradient-to-br from-[#FDF9F1] to-[#F9F6F1] p-4 text-left">
+            <p className="text-xs uppercase tracking-[0.25em] text-[#AF7B3B]">
+              Antes de llegar
+            </p>
+            <ul className="space-y-2 text-sm leading-relaxed text-[#4B4A48]">
+              {SUCCESS_REMINDERS.map((reminder) => (
+                <li key={reminder} className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#AF7B3B]" />
+                  <span>{reminder}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-[#6F6A63]">
+              Nuestro equipo te confirmará el horario por correo y WhatsApp en
+              menos de{" "}
+              <span className="font-semibold text-[#AF7B3B]">
+                15 minutos hábiles
+              </span>
+              .
+            </p>
+            <p className="text-xs font-semibold text-[#7C786F]">
+              Para cerrar este aviso usa únicamente el botón{" "}
+              <span className="uppercase tracking-[0.18em]">
+                &quot;Volver al inicio&quot;
+              </span>
+              .
+            </p>
+          </div>
+
+          <button
+            onClick={onExit}
+            className="w-full rounded-full bg-gradient-to-r from-[#AF7B3B] to-[#C79955] px-6 py-3 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-[0_20px_45px_rgba(175,123,59,0.4)] transition-[transform,box-shadow] hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(175,123,59,0.5)]"
+          >
+            Volver al inicio
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+});
 
 interface ReservationBookingFormProps {
   hasNavbar?: boolean;
@@ -322,10 +561,7 @@ const ReservationBookingForm = ({
     );
   }, [barbers, form.serviceId, preferredBarberIds]);
 
-  const displayedBarbers = useMemo(() => {
-    if (!form.serviceId) return [] as Peluquero[];
-    return filteredBarbers;
-  }, [form.serviceId, filteredBarbers]);
+  const displayedBarbers = filteredBarbers;
 
   useEffect(() => {
     if (!form.serviceId) {
@@ -381,10 +617,12 @@ const ReservationBookingForm = ({
     );
   }, [appointments, form.date, form.barberId]);
 
-  const now = Date.now();
-  const todayValue = formatDateForInput(new Date());
-
+  // Granularity: recalculate only when the minute changes, not every render
+  const nowMinute = useMemo(() => Math.floor(Date.now() / 60_000), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshes each minute boundary
   const availableTimeSlots = useMemo(() => {
+    const now = nowMinute * 60_000;
+    const todayValue = formatDateForInput(new Date(now));
     const base = curatedTimeSlots.filter(
       (slot) => isSlotWithinBusinessHours(slot) && !busySlots.has(slot)
     );
@@ -401,7 +639,7 @@ const ReservationBookingForm = ({
     }
 
     return base;
-  }, [busySlots, form.date, now, todayValue]);
+  }, [busySlots, form.date, nowMinute]);
 
   useEffect(() => {
     if (!form.date) return;
@@ -427,10 +665,7 @@ const ReservationBookingForm = ({
     };
   }, []);
 
-  const dayFullyBooked = useMemo(() => {
-    if (!form.date) return false;
-    return availableTimeSlots.length === 0;
-  }, [availableTimeSlots, form.date]);
+  const dayFullyBooked = form.date !== "" && availableTimeSlots.length === 0;
 
   const { barberId, date, time } = form;
 
@@ -566,7 +801,7 @@ const ReservationBookingForm = ({
     [barbers, form.barberId]
   );
 
-  const handleChange = <K extends keyof FormState>(
+  const handleChange = useCallback(<K extends keyof FormState>(
     key: K,
     value: FormState[K]
   ) => {
@@ -577,10 +812,10 @@ const ReservationBookingForm = ({
       delete next.general;
       return next;
     });
-    if (submitState === "success" || submitState === "error") {
-      setSubmitState("idle");
-    }
-  };
+    setSubmitState((prev) =>
+      prev === "success" || prev === "error" ? "idle" : prev
+    );
+  }, []);
 
   const validate = (): FormErrors => {
     const errors: FormErrors = {};
@@ -621,11 +856,11 @@ const ReservationBookingForm = ({
 
     if (!form.email.trim()) {
       errors.email = "Correo obligatorio";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    } else if (!EMAIL_RE.test(form.email.trim())) {
       errors.email = "Correo inválido";
     }
 
-    if (form.phone && !/^\+?[0-9\s-]{7,15}$/.test(form.phone.trim())) {
+    if (form.phone && !PHONE_RE.test(form.phone.trim())) {
       errors.phone = "Teléfono inválido";
     }
 
@@ -670,10 +905,10 @@ const ReservationBookingForm = ({
     }
   };
 
-  const handlePreviousStep = () => {
+  const handlePreviousStep = useCallback(() => {
     setFormErrors({});
     setCurrentStep((prev) => (prev > 1 ? ((prev - 1) as FormStep) : prev));
-  };
+  }, []);
 
   const resetForm = () => {
     const initialDateTime = getInitialDateTime();
@@ -691,30 +926,30 @@ const ReservationBookingForm = ({
     setCurrentStep(1);
   };
 
-  const handleSuccessExit = () => {
+  const handleSuccessExit = useCallback(() => {
     setSubmitState("idle");
     setSuccessId(null);
     navigate("/home");
-  };
+  }, [navigate]);
 
-  const refreshAppointments = async () => {
+  const refreshAppointments = useCallback(async () => {
     try {
       const data = await citasService.list();
       setAppointments(data);
     } catch (error) {
       logger.warn("[Reservas] Error al refrescar citas:", error);
     }
-  };
+  }, []);
 
-  const handleInfoEnter = () => {
+  const handleInfoEnter = useCallback(() => {
     if (infoTimeoutRef.current) {
       window.clearTimeout(infoTimeoutRef.current);
       infoTimeoutRef.current = null;
     }
     setInfoOpen(true);
-  };
+  }, []);
 
-  const handleInfoLeave = () => {
+  const handleInfoLeave = useCallback(() => {
     if (infoTimeoutRef.current) {
       window.clearTimeout(infoTimeoutRef.current);
     }
@@ -722,17 +957,17 @@ const ReservationBookingForm = ({
       setInfoOpen(false);
       infoTimeoutRef.current = null;
     }, 120);
-  };
+  }, []);
 
-  const closeInfoPopoverImmediately = () => {
+  const closeInfoPopoverImmediately = useCallback(() => {
     if (infoTimeoutRef.current) {
       window.clearTimeout(infoTimeoutRef.current);
       infoTimeoutRef.current = null;
     }
     setInfoOpen(false);
-  };
+  }, []);
 
-  const closePaymentModal = () => {
+  const closePaymentModal = useCallback(() => {
     setPaymentModal({
       open: false,
       stage: "method",
@@ -744,9 +979,9 @@ const ReservationBookingForm = ({
     if (submitState === "submitting") {
       setSubmitState("idle");
     }
-  };
+  }, [submitState]);
 
-  const handlePaymentMethodSelect = (method: PaymentMethod) => {
+  const handlePaymentMethodSelect = useCallback((method: PaymentMethod) => {
     if (!pendingPayment) return;
     const seed = paymentModal.transactionSeed ?? buildTransactionSeed();
     const transactionId = formatTransactionId(seed, paymentModal.citaId);
@@ -758,9 +993,9 @@ const ReservationBookingForm = ({
       transactionId,
       error: null,
     }));
-  };
+  }, [pendingPayment, paymentModal.transactionSeed, paymentModal.citaId]);
 
-  const handleChangeMethod = () => {
+  const handleChangeMethod = useCallback(() => {
     setPaymentModal((prev) => ({
       ...prev,
       stage: "method",
@@ -768,7 +1003,7 @@ const ReservationBookingForm = ({
       error: null,
     }));
     setQrDataUrl(null);
-  };
+  }, []);
 
   const finalizePayment = async () => {
     if (!pendingPayment || !paymentModal.method) return;
@@ -940,8 +1175,8 @@ const ReservationBookingForm = ({
     formatTransactionId(paymentModal.transactionSeed, paymentModal.citaId);
   const processingCopy =
     paymentModal.method === "debit"
-      ? "Procesando el débito simulado desde tu tarjeta Sunsetz..."
-      : "Validando tu pago QR con el equipo Sunsetz...";
+      ? "Procesando el débito simulado desde tu tarjeta Sunsetz…"
+      : "Validando tu pago QR con el equipo Sunsetz…";
   const isPaymentProcessing = paymentModal.stage === "processing";
   const sectionTopPadding = hasNavbar
     ? "pt-20 sm:pt-24 lg:pt-28"
@@ -987,11 +1222,11 @@ const ReservationBookingForm = ({
                 className="absolute right-4 top-4 rounded-full border border-[#E3D5BF] bg-white p-2 text-[#6C6B68] transition hover:text-[#AF7B3B]"
                 aria-label="Cerrar ventana de pago"
               >
-                <FaTimes />
+                <FaTimes aria-hidden="true" />
               </button>
               <div className="mb-6 flex items-center gap-3">
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F4E8D6] text-[#AF7B3B]">
-                  <FaQrcode className="text-xl" />
+                  <FaQrcode className="text-xl" aria-hidden="true" />
                 </span>
                 <div>
                   <p className="text-xs uppercase tracking-[0.32em] text-[#7C786F]">
@@ -1041,7 +1276,7 @@ const ReservationBookingForm = ({
                         className="flex flex-col items-start gap-3 rounded-3xl border border-[#E7D9C4] bg-white p-5 text-left transition hover:border-[#C79955]"
                       >
                         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F4E8D6] text-[#AF7B3B]">
-                          <FaQrcode className="text-xl" />
+                          <FaQrcode className="text-xl" aria-hidden="true" />
                         </span>
                         <div>
                           <p className="text-base font-semibold text-[#1F1C16]">
@@ -1059,7 +1294,7 @@ const ReservationBookingForm = ({
                         className="flex flex-col items-start gap-3 rounded-3xl border border-[#E7D9C4] bg-white p-5 text-left transition hover:border-[#C79955]"
                       >
                         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E7F0F8] text-[#3C6FA3]">
-                          <FaMoneyBillWave className="text-xl" />
+                          <FaMoneyBillWave className="text-xl" aria-hidden="true" />
                         </span>
                         <div>
                           <p className="text-base font-semibold text-[#1F1C16]">
@@ -1088,7 +1323,7 @@ const ReservationBookingForm = ({
                         <div className="flex flex-col items-center gap-3 text-[#7C786F]">
                           <div className="h-12 w-12 animate-spin rounded-full border-2 border-[#E5D5BC] border-t-[#C79955]" />
                           <span className="text-xs uppercase tracking-[0.28em]">
-                            Generando QR...
+                            Generando QR…
                           </span>
                         </div>
                       )}
@@ -1166,7 +1401,7 @@ const ReservationBookingForm = ({
 
                 {paymentModal.stage === "processing" ? (
                   <div className="flex flex-col items-center gap-4 py-6 text-center">
-                    <div className="h-12 w-12 animate-spin rounded-full border-2 border-[#E5D5BC] border-t-[#C79955]" />
+                    {processingSpinner}
                     <p className="text-sm text-[#4B4A48]">{processingCopy}</p>
                     <p className="text-xs text-[#7C786F]">
                       No cierres esta ventana, estamos confirmando tu cita.
@@ -1177,7 +1412,7 @@ const ReservationBookingForm = ({
                 {paymentModal.stage === "success" ? (
                   <div className="flex flex-col items-center gap-4 py-6 text-center">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F4E8D6] text-[#AF7B3B]">
-                      <FaCheckCircle className="text-2xl" />
+                      <FaCheckCircle className="text-2xl" aria-hidden="true" />
                     </div>
                     <p className="text-base font-semibold text-[#1F1C16]">
                       Pago confirmado
@@ -1198,8 +1433,8 @@ const ReservationBookingForm = ({
                 ) : null}
 
                 {paymentModal.stage === "error" ? (
-                  <div className="flex flex-col items-center gap-4 py-6 text-center text-[#8A4B3A]">
-                    <FaExclamationTriangle className="text-2xl" />
+                  <div role="alert" className="flex flex-col items-center gap-4 py-6 text-center text-[#8A4B3A]">
+                    <FaExclamationTriangle className="text-2xl" aria-hidden="true" />
                     <p className="text-sm font-semibold">
                       No se pudo confirmar el pago
                     </p>
@@ -1229,9 +1464,7 @@ const ReservationBookingForm = ({
                 ) : null}
               </div>
 
-              <p className="mt-6 text-center text-[10px] uppercase tracking-[0.32em] text-[#B1A799]">
-                Sunsetz Barber Studio · Seguridad QR certificada
-              </p>
+              {paymentSecurityFooter}
             </motion.div>
           </motion.div>
         ) : null}
@@ -1242,7 +1475,7 @@ const ReservationBookingForm = ({
       >
         <div className="mx-auto max-w-6xl px-5 lg:px-8">
           {fetchErrorMessage ? (
-            <div className="mb-8 rounded-lg border border-red-500/30 bg-red-900/35 p-6 text-sm text-red-100 shadow-lg">
+            <div role="alert" className="mb-8 rounded-lg border border-red-500/30 bg-red-900/35 p-6 text-sm text-red-100 shadow-lg">
               <p className="font-semibold uppercase tracking-[0.2em]">
                 Servicio temporalmente fuera de línea
               </p>
@@ -1291,7 +1524,7 @@ const ReservationBookingForm = ({
                     className="flex h-9 w-9 items-center justify-center rounded-md border border-[#5E472B] bg-[#2B2419] text-[#EED9AF] shadow-sm transition hover:border-[#C79B55] hover:text-[#C79B55]"
                     aria-label="Ver detalles de la experiencia"
                   >
-                    <FaQuestionCircle />
+                    <FaQuestionCircle aria-hidden="true" />
                   </button>
                   <AnimatePresence>
                     {infoOpen ? (
@@ -1303,7 +1536,7 @@ const ReservationBookingForm = ({
                         className="absolute right-0 z-30 mt-3 w-72 rounded-lg border border-[#3D2E1E] bg-[#1B1610] p-5 text-sm text-[#E8D8BA] shadow-[0_20px_50px_rgba(0,0,0,0.45)]"
                       >
                         <div className="flex items-center gap-2 text-[#C79B55]">
-                          <FaInfoCircle /> Equipo Sunsetz
+                          <FaInfoCircle aria-hidden="true" /> Equipo Sunsetz
                         </div>
                         <p className="mt-3 text-xs text-[#CEC0A5]">
                           Confirmamos tu cita en minutos y preparamos tu experiencia personalizada.
@@ -1359,10 +1592,7 @@ const ReservationBookingForm = ({
             </div>
 
             <div className="relative">
-              <div
-                className="pointer-events-none absolute inset-x-6 -top-6 bottom-6 rounded-[36px] bg-[#C79B55]/25 blur-3xl"
-                aria-hidden
-              />
+              {formGlowBackground}
               <motion.form
                 onSubmit={handleFormSubmit}
                 initial={{ opacity: 0, y: 20 }}
@@ -1384,14 +1614,14 @@ const ReservationBookingForm = ({
                         <div className="grid gap-5 lg:grid-cols-2">
                           <label className="flex flex-col gap-2 text-sm">
                             <span className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-[#5B564F]">
-                              <FaScissors className="text-[#AF7B3B]" /> Servicio
+                              <FaScissors className="text-[#AF7B3B]" aria-hidden="true" /> Servicio
                             </span>
                             <select
                               value={form.serviceId}
                               onChange={(event) =>
                                 handleChange("serviceId", event.target.value)
                               }
-                              className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none ${
+                              className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#AF7B3B]/50 ${
                                 formErrors.serviceId
                                   ? "border-red-300"
                                   : "border-[#E2DBCF]"
@@ -1417,7 +1647,7 @@ const ReservationBookingForm = ({
                         </div>
 
                         {/* Sección de barberos disponibles - Se muestra automáticamente al seleccionar servicio */}
-                        {form.serviceId && displayedBarbers.length > 0 && (
+                        {form.serviceId && displayedBarbers.length > 0 ? (
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -1426,7 +1656,7 @@ const ReservationBookingForm = ({
                           >
                             <div className="flex items-center gap-2">
                               <span className="text-xs uppercase tracking-[0.32em] text-[#5B564F]">
-                                <FaUser className="inline text-[#AF7B3B] mr-2" />
+                                <FaUser className="inline text-[#AF7B3B] mr-2" aria-hidden="true" />
                                 Barberos disponibles
                               </span>
                               <span className="rounded-full bg-[#AF7B3B] px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -1435,99 +1665,27 @@ const ReservationBookingForm = ({
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                              {displayedBarbers.map((barber) => {
-                                const isSelected = form.barberId === String(barber.id);
-                                const isRecommended = preferredBarberIds.has(barber.id);
-                                
-                                return (
-                                  <button
-                                    key={barber.id}
-                                    type="button"
-                                    onClick={() => handleChange("barberId", String(barber.id))}
-                                    disabled={isLoading || isDisabled}
-                                    className={`group relative flex flex-col items-center gap-3 rounded-2xl border-2 p-4 text-center transition-all duration-200 ${
-                                      isSelected
-                                        ? "border-[#AF7B3B] bg-gradient-to-br from-[#FDF5E8] to-[#F9F0E0] shadow-[0_8px_24px_rgba(175,123,59,0.25)]"
-                                        : "border-[#E7D9C4] bg-white hover:border-[#C79955] hover:shadow-[0_4px_16px_rgba(175,123,59,0.15)]"
-                                    } disabled:cursor-not-allowed disabled:opacity-60`}
-                                  >
-                                    {/* Badge de recomendado */}
-                                    {isRecommended && (
-                                      <div className="absolute -right-2 -top-2 rounded-full bg-[#AF7B3B] px-2 py-1 text-[9px] font-bold uppercase tracking-[0.15em] text-white shadow-md">
-                                        ★ Top
-                                      </div>
-                                    )}
-
-                                    {/* Indicador de selección */}
-                                    {isSelected && (
-                                      <div className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#AF7B3B] text-white shadow-md">
-                                        <FaCheckCircle className="text-sm" />
-                                      </div>
-                                    )}
-
-                                    {/* Foto o iniciales del barbero */}
-                                    <div className={`relative h-20 w-20 overflow-hidden rounded-full border-4 transition-all ${
-                                      isSelected 
-                                        ? "border-[#AF7B3B] shadow-[0_0_20px_rgba(175,123,59,0.3)]" 
-                                        : "border-[#E7D9C4] group-hover:border-[#C79955]"
-                                    }`}>
-                                      {barber.fotoUrl ? (
-                                        <img
-                                          src={barber.fotoUrl}
-                                          alt={barber.nombre}
-                                          className="h-full w-full object-cover"
-                                          onError={(e) => {
-                                            e.currentTarget.style.display = "none";
-                                            const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                                            if (fallback) fallback.style.display = "flex";
-                                          }}
-                                        />
-                                      ) : null}
-                                      <div
-                                        className={`flex h-full w-full items-center justify-center bg-gradient-to-br from-[#AF7B3B] to-[#8B6230] text-2xl font-bold text-white ${
-                                          barber.fotoUrl ? "hidden" : "flex"
-                                        }`}
-                                      >
-                                        {getBarberInitials(barber.nombre)}
-                                      </div>
-                                    </div>
-
-                                    {/* Nombre del barbero */}
-                                    <div className="w-full space-y-1">
-                                      <p className={`text-sm font-semibold leading-tight transition-colors ${
-                                        isSelected ? "text-[#AF7B3B]" : "text-[#1F1C16] group-hover:text-[#AF7B3B]"
-                                      }`}>
-                                        {barber.nombre}
-                                      </p>
-                                      
-                                      {/* Especialidad si está disponible */}
-                                      {barber.especialidad && (
-                                        <p className="text-[10px] uppercase tracking-[0.15em] text-[#7C786F]">
-                                          {barber.especialidad}
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    {/* Indicador visual de hover */}
-                                    <div className={`absolute inset-0 rounded-2xl transition-opacity ${
-                                      isSelected 
-                                        ? "opacity-0" 
-                                        : "opacity-0 group-hover:opacity-100"
-                                    } bg-gradient-to-t from-[#AF7B3B]/5 to-transparent pointer-events-none`} />
-                                  </button>
-                                );
-                              })}
+                              {displayedBarbers.map((barber) => (
+                                <BarberCard
+                                  key={barber.id}
+                                  barber={barber}
+                                  isSelected={form.barberId === String(barber.id)}
+                                  isRecommended={preferredBarberIds.has(barber.id)}
+                                  disabled={isLoading || isDisabled}
+                                  onSelect={() => handleChange("barberId", String(barber.id))}
+                                />
+                              ))}
                             </div>
 
-                            {formErrors.barberId && (
+                            {formErrors.barberId ? (
                               <span className="text-xs text-red-500">
                                 {formErrors.barberId}
                               </span>
-                            )}
+                            ) : null}
 
-                            {displayedBarbers.length === 0 && form.serviceId && (
+                            {displayedBarbers.length === 0 && form.serviceId ? (
                               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
-                                <FaExclamationTriangle className="mx-auto mb-2 text-2xl text-amber-600" />
+                                <FaExclamationTriangle className="mx-auto mb-2 text-2xl text-amber-600" aria-hidden="true" />
                                 <p className="text-sm font-semibold text-amber-900">
                                   Sin barberos asignados
                                 </p>
@@ -1535,22 +1693,22 @@ const ReservationBookingForm = ({
                                   Este servicio aún no tiene barberos disponibles. Por favor, contáctanos por WhatsApp o elige otro servicio.
                                 </p>
                               </div>
-                            )}
+                            ) : null}
                           </motion.div>
-                        )}
+                        ) : null}
 
-                        {!form.serviceId && (
+                        {!form.serviceId ? (
                           <div className="rounded-xl border border-[#E7D9C4] bg-[#FDF9F1] p-4 text-center">
                             <p className="text-sm text-[#7C786F]">
                               👆 Selecciona un servicio para ver los barberos disponibles
                             </p>
                           </div>
-                        )}
+                        ) : null}
 
                         <div className="grid gap-5 lg:grid-cols-[1fr_0.6fr]">
                           <label className="flex flex-col gap-2 text-sm">
                             <span className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-[#5B564F]">
-                              <FaCalendarAlt className="text-[#AF7B3B]" /> Fecha
+                              <FaCalendarAlt className="text-[#AF7B3B]" aria-hidden="true" /> Fecha
                             </span>
                             <input
                               type="date"
@@ -1559,7 +1717,7 @@ const ReservationBookingForm = ({
                                 handleChange("date", event.target.value)
                               }
                               min={formatDateForInput(new Date())}
-                              className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none ${
+                              className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#AF7B3B]/50 ${
                                 formErrors.date
                                   ? "border-red-300"
                                   : "border-[#E2DBCF]"
@@ -1576,7 +1734,7 @@ const ReservationBookingForm = ({
                           <label className="flex flex-col gap-2 text-sm">
                             <div className="flex items-center justify-between gap-3">
                               <span className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-[#5B564F]">
-                                <FaClock className="text-[#AF7B3B]" /> Horario
+                                <FaClock className="text-[#AF7B3B]" aria-hidden="true" /> Horario
                               </span>
                               <button
                                 type="button"
@@ -1592,7 +1750,7 @@ const ReservationBookingForm = ({
                                 onChange={(event) =>
                                   handleChange("time", event.target.value)
                                 }
-                                className={`w-full rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none ${
+                                className={`w-full rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#AF7B3B]/50 ${
                                   formErrors.time
                                     ? "border-red-300"
                                     : "border-[#E2DBCF]"
@@ -1623,34 +1781,34 @@ const ReservationBookingForm = ({
                             ) : null}
 
                             {/* Indicador de disponibilidad en tiempo real */}
-                            {availabilityCheck.checking && (
+                            {availabilityCheck.checking ? (
                               <div className="flex items-center gap-2 rounded-lg border border-[#E7D9C4] bg-[#FDF9F1] px-3 py-2 text-xs">
                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#E5D5BC] border-t-[#AF7B3B]" />
                                 <span className="text-[#7C786F]">
-                                  Verificando disponibilidad...
+                                  Verificando disponibilidad…
                                 </span>
                               </div>
-                            )}
+                            ) : null}
 
                             {!availabilityCheck.checking &&
-                              availabilityCheck.available === true && (
+                              availabilityCheck.available === true ? (
                                 <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs">
-                                  <FaCheckCircle className="text-green-600" />
+                                  <FaCheckCircle className="text-green-600" aria-hidden="true" />
                                   <span className="font-semibold text-green-700">
                                     {availabilityCheck.message}
                                   </span>
                                 </div>
-                              )}
+                              ) : null}
 
                             {!availabilityCheck.checking &&
-                              availabilityCheck.available === false && (
-                                <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs">
-                                  <FaExclamationTriangle className="text-red-600" />
+                              availabilityCheck.available === false ? (
+                                <div role="alert" className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs">
+                                  <FaExclamationTriangle className="text-red-600" aria-hidden="true" />
                                   <span className="font-semibold text-red-700">
                                     {availabilityCheck.message}
                                   </span>
                                 </div>
-                              )}
+                              ) : null}
 
                             {dayFullyBooked ? (
                               <span className="text-[11px] text-red-500">
@@ -1679,7 +1837,7 @@ const ReservationBookingForm = ({
                         <div className="grid gap-5 lg:grid-cols-2">
                           <label className="flex flex-col gap-2 text-sm">
                             <span className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-[#5B564F]">
-                              <FaUser className="text-[#AF7B3B]" /> Nombre
+                              <FaUser className="text-[#AF7B3B]" aria-hidden="true" /> Nombre
                               completo
                             </span>
                             <input
@@ -1689,7 +1847,7 @@ const ReservationBookingForm = ({
                                 handleChange("name", event.target.value)
                               }
                               placeholder="Ej. Eduardo Salvatierra"
-                              className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none ${
+                              className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#AF7B3B]/50 ${
                                 formErrors.name
                                   ? "border-red-300"
                                   : "border-[#E2DBCF]"
@@ -1705,7 +1863,7 @@ const ReservationBookingForm = ({
 
                           <label className="flex flex-col gap-2 text-sm">
                             <span className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-[#5B564F]">
-                              <FaEnvelope className="text-[#AF7B3B]" /> Correo
+                              <FaEnvelope className="text-[#AF7B3B]" aria-hidden="true" /> Correo
                               electrónico
                             </span>
                             <input
@@ -1715,7 +1873,7 @@ const ReservationBookingForm = ({
                                 handleChange("email", event.target.value)
                               }
                               placeholder="ejemplo@email.com"
-                              className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none ${
+                              className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#AF7B3B]/50 ${
                                 formErrors.email
                                   ? "border-red-300"
                                   : "border-[#E2DBCF]"
@@ -1732,7 +1890,7 @@ const ReservationBookingForm = ({
 
                         <label className="flex flex-col gap-2 text-sm">
                           <span className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-[#5B564F]">
-                            <FaPhoneAlt className="text-[#AF7B3B]" /> WhatsApp
+                            <FaPhoneAlt className="text-[#AF7B3B]" aria-hidden="true" /> WhatsApp
                             de contacto (opcional)
                           </span>
                           <input
@@ -1742,7 +1900,7 @@ const ReservationBookingForm = ({
                               handleChange("phone", event.target.value)
                             }
                             placeholder="+591 7 867 4454"
-                            className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none ${
+                            className={`rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#AF7B3B]/50 ${
                               formErrors.phone
                                 ? "border-red-300"
                                 : "border-[#E2DBCF]"
@@ -1758,7 +1916,7 @@ const ReservationBookingForm = ({
 
                         <label className="flex flex-col gap-2 text-sm">
                           <span className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-[#5B564F]">
-                            <FaCalendarAlt className="text-[#AF7B3B]" /> Notas
+                            <FaCalendarAlt className="text-[#AF7B3B]" aria-hidden="true" /> Notas
                             especiales (opcional)
                           </span>
                           <textarea
@@ -1768,7 +1926,7 @@ const ReservationBookingForm = ({
                             }
                             placeholder="Cuéntanos si deseas un acabado específico, referencias de estilo o necesidades logísticas."
                             rows={4}
-                            className="resize-none rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none"
+                            className="resize-none rounded-lg border border-[#D9D3C9] bg-white px-4 py-3 text-sm text-[#1C1B1A] transition-colors focus:border-[#AF7B3B] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#AF7B3B]/50"
                             disabled={isDisabled}
                           />
                         </label>
@@ -1886,7 +2044,7 @@ const ReservationBookingForm = ({
                         </p>
 
                         {currentStep === 3 &&
-                          Object.keys(formErrors).length > 0 && (
+                          Object.keys(formErrors).length > 0 ? (
                             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                               <p className="font-semibold uppercase tracking-[0.25em]">
                                 Revisa los datos
@@ -1903,13 +2061,13 @@ const ReservationBookingForm = ({
                                 )}
                               </ul>
                             </div>
-                          )}
+                          ) : null}
                       </motion.div>
                     ) : null}
                   </AnimatePresence>
 
                   {formErrors.general ? (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                       <p className="font-semibold uppercase tracking-[0.25em]">
                         No se pudo enviar
                       </p>
@@ -1949,7 +2107,7 @@ const ReservationBookingForm = ({
                       >
                         {currentStep === 3
                           ? submitState === "submitting"
-                            ? "Iniciando pago..."
+                            ? "Iniciando pago…"
                             : "Solicitar y pagar"
                           : "Continuar"}
                       </button>
@@ -1957,11 +2115,7 @@ const ReservationBookingForm = ({
                   </div>
                 </div>
 
-                {isLoading ? (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70">
-                    <div className="h-12 w-12 animate-spin rounded-full border-2 border-[#E5D5BC] border-t-[#C79955]" />
-                  </div>
-                ) : null}
+                {isLoading ? loadingOverlay : null}
               </motion.form>
             </div>
           </div>
@@ -1990,7 +2144,7 @@ const ReservationBookingForm = ({
               <div className="border-b border-[#E7D9C4] bg-gradient-to-br from-[#FDF9F1] to-[#F9F6F1] px-8 py-6">
                 <div className="flex items-start gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#AF7B3B]/10">
-                    <FaExclamationTriangle className="text-2xl text-[#AF7B3B]" />
+                    <FaExclamationTriangle className="text-2xl text-[#AF7B3B]" aria-hidden="true" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-2xl tracking-[0.08em] text-[#1F1C16]">
@@ -2013,7 +2167,7 @@ const ReservationBookingForm = ({
 
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
-                      <FaScissors className="mt-1 text-[#AF7B3B]" />
+                      <FaScissors className="mt-1 text-[#AF7B3B]" aria-hidden="true" />
                       <div className="flex-1">
                         <p className="text-xs text-[#9B9388]">Servicio</p>
                         <p className="font-semibold text-[#1F1C16]">
@@ -2027,7 +2181,7 @@ const ReservationBookingForm = ({
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <FaUser className="mt-1 text-[#AF7B3B]" />
+                      <FaUser className="mt-1 text-[#AF7B3B]" aria-hidden="true" />
                       <div className="flex-1">
                         <p className="text-xs text-[#9B9388]">Barbero</p>
                         <p className="font-semibold text-[#1F1C16]">
@@ -2037,7 +2191,7 @@ const ReservationBookingForm = ({
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <FaCalendarAlt className="mt-1 text-[#AF7B3B]" />
+                      <FaCalendarAlt className="mt-1 text-[#AF7B3B]" aria-hidden="true" />
                       <div className="flex-1">
                         <p className="text-xs text-[#9B9388]">Fecha y Hora</p>
                         <p className="font-semibold text-[#1F1C16]">
@@ -2059,7 +2213,7 @@ const ReservationBookingForm = ({
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <FaUser className="mt-1 text-[#AF7B3B]" />
+                      <FaUser className="mt-1 text-[#AF7B3B]" aria-hidden="true" />
                       <div className="flex-1">
                         <p className="text-xs text-[#9B9388]">
                           Datos de contacto
@@ -2072,9 +2226,9 @@ const ReservationBookingForm = ({
                       </div>
                     </div>
 
-                    {form.notes && (
+                    {form.notes ? (
                       <div className="flex items-start gap-3">
-                        <FaInfoCircle className="mt-1 text-[#AF7B3B]" />
+                        <FaInfoCircle className="mt-1 text-[#AF7B3B]" aria-hidden="true" />
                         <div className="flex-1">
                           <p className="text-xs text-[#9B9388]">
                             Notas adicionales
@@ -2082,14 +2236,14 @@ const ReservationBookingForm = ({
                           <p className="text-sm text-[#6F6A63]">{form.notes}</p>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
                 {/* Advertencias importantes */}
                 <div className="space-y-3">
                   <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                    <FaInfoCircle className="mt-0.5 text-amber-600" />
+                    <FaInfoCircle className="mt-0.5 text-amber-600" aria-hidden="true" />
                     <div className="flex-1">
                       <p className="text-xs font-semibold text-amber-900">
                         Importante
@@ -2102,7 +2256,7 @@ const ReservationBookingForm = ({
                   </div>
 
                   <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
-                    <FaCheckCircle className="mt-0.5 text-blue-600" />
+                    <FaCheckCircle className="mt-0.5 text-blue-600" aria-hidden="true" />
                     <div className="flex-1">
                       <p className="text-xs font-semibold text-blue-900">
                         Confirmación
@@ -2126,7 +2280,7 @@ const ReservationBookingForm = ({
                 </button>
                 <button
                   onClick={handleConfirmAndProceed}
-                  className="flex-1 rounded-full bg-gradient-to-r from-[#AF7B3B] to-[#C79955] px-6 py-3 text-sm font-bold uppercase tracking-[0.28em] text-white shadow-[0_12px_32px_rgba(175,123,59,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(175,123,59,0.5)]"
+                  className="flex-1 rounded-full bg-gradient-to-r from-[#AF7B3B] to-[#C79955] px-6 py-3 text-sm font-bold uppercase tracking-[0.28em] text-white shadow-[0_12px_32px_rgba(175,123,59,0.4)] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(175,123,59,0.5)]"
                 >
                   Confirmar y Pagar
                 </button>
@@ -2138,114 +2292,12 @@ const ReservationBookingForm = ({
 
       {/* Modal de Boleto - Confirmación de cita exitosa */}
       <AnimatePresence>
-        {submitState === "success" && successId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-4 backdrop-blur-sm overflow-y-auto"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md my-auto overflow-hidden rounded-[32px] border border-[#E7D9C4] bg-white shadow-[0_32px_90px_rgba(0,0,0,0.25)]"
-            >
-              {/* Header con gradiente - MÁS COMPACTO */}
-              <div className="relative bg-gradient-to-br from-[#AF7B3B] to-[#8B6230] px-6 py-6 text-center">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.1),transparent_70%)]" />
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                  className="relative mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur"
-                >
-                  <FaCheckCircle className="text-4xl text-white" />
-                </motion.div>
-                <h2 className="text-2xl text-white">¡Cita Confirmada!</h2>
-                <p className="mt-1 text-sm text-white/85">
-                  Tu experiencia Sunsetz está reservada
-                </p>
-              </div>
-
-              {/* Contenido del boleto - MÁS COMPACTO */}
-              <div className="space-y-4 p-6">
-                {/* Código de reserva */}
-                <div className="rounded-2xl border-2 border-dashed border-[#E7D9C4] bg-[#FDF9F1] p-4 text-center">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[#AF7B3B]">
-                    Código de reserva
-                  </p>
-                  <p className="mt-2 text-3xl text-[#1F1C16]">
-                    #{String(successId).padStart(4, "0")}
-                  </p>
-                  <p className="mt-1 text-xs text-[#7C786F]">
-                    Guarda este código para tu seguimiento
-                  </p>
-                </div>
-
-                {/* Detalles esenciales */}
-                <div className="rounded-2xl border border-[#E7D9C4] bg-[#FDF9F1] p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#AF7B3B]/10 text-[#AF7B3B]">
-                      <FaMapMarkerAlt />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-xs uppercase tracking-[0.25em] text-[#9B9388]">
-                        Tu experiencia te espera en
-                      </p>
-                      <p className="mt-1 text-lg font-semibold text-[#1F1C16]">
-                        {SUCCESS_LOCATION_NAME}
-                      </p>
-                      <p className="mt-1 text-xs text-[#6F6A63]">
-                        {SUCCESS_LOCATION_ADDRESS}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recordatorios y avisos */}
-                <div className="space-y-3 rounded-xl border border-[#E7D9C4] bg-gradient-to-br from-[#FDF9F1] to-[#F9F6F1] p-4 text-left">
-                  <p className="text-xs uppercase tracking-[0.25em] text-[#AF7B3B]">
-                    Antes de llegar
-                  </p>
-                  <ul className="space-y-2 text-sm leading-relaxed text-[#4B4A48]">
-                    {SUCCESS_REMINDERS.map((reminder) => (
-                      <li key={reminder} className="flex items-start gap-2">
-                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#AF7B3B]" />
-                        <span>{reminder}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-xs text-[#6F6A63]">
-                    Nuestro equipo te confirmará el horario por correo y
-                    WhatsApp en menos de{" "}
-                    <span className="font-semibold text-[#AF7B3B]">
-                      15 minutos hábiles
-                    </span>
-                    .
-                  </p>
-                  <p className="text-xs font-semibold text-[#7C786F]">
-                    Para cerrar este aviso usa únicamente el botón{" "}
-                    <span className="uppercase tracking-[0.18em]">
-                      “Volver al inicio”
-                    </span>
-                    .
-                  </p>
-                </div>
-
-                {/* Botón para volver */}
-                <button
-                  onClick={handleSuccessExit}
-                  className="w-full rounded-full bg-gradient-to-r from-[#AF7B3B] to-[#C79955] px-6 py-3 text-sm font-bold uppercase tracking-[0.2em] text-white shadow-[0_20px_45px_rgba(175,123,59,0.4)] transition-all hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(175,123,59,0.5)]"
-                >
-                  Volver al inicio
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+        {submitState === "success" && successId ? (
+          <SuccessTicketModal
+            successId={successId}
+            onExit={handleSuccessExit}
+          />
+        ) : null}
       </AnimatePresence>
     </>
   );

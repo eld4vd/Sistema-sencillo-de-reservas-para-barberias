@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FaEdit, FaPlus, FaSearch, FaStar, FaTrash, FaCheckCircle, FaListAlt, FaMoneyBillWave } from "react-icons/fa";
@@ -45,7 +45,7 @@ const ServiciosDashboard = () => {
   const [mutationState, setMutationState] = useState<"idle" | "loading">("idle");
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -57,7 +57,7 @@ const ServiciosDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -73,7 +73,7 @@ const ServiciosDashboard = () => {
     );
   }, [services, search]);
 
-  const openModal = (mode: ModalMode, service?: Servicio) => {
+  const openModal = useCallback((mode: ModalMode, service?: Servicio) => {
     setModalMode(mode);
     setSelected(service ?? null);
     setFormErrors({});
@@ -89,17 +89,17 @@ const ServiciosDashboard = () => {
         activo: service.activo,
       });
     }
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setModalMode(null);
     setSelected(null);
     setForm(defaultFormState);
     setFormErrors({});
     setMutationState("idle");
-  };
+  }, []);
 
-  const handleChange = <K extends keyof ServicioFormState>(key: K, value: ServicioFormState[K]) => {
+  const handleChange = useCallback(<K extends keyof ServicioFormState>(key: K, value: ServicioFormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setFormErrors((prev) => {
       const next = { ...prev };
@@ -107,7 +107,7 @@ const ServiciosDashboard = () => {
       delete next.general;
       return next;
     });
-  };
+  }, []);
 
   const validate = (): FormErrors => {
     const errors: FormErrors = {};
@@ -181,11 +181,20 @@ const ServiciosDashboard = () => {
     return () => window.clearTimeout(timeout);
   }, [flashMessage]);
 
-  const totalServices = services.length;
-  const activeServices = services.filter((service) => service.activo).length;
-  const avgPrice = services.length
-    ? services.reduce((acc, curr) => acc + (curr.precio ?? 0), 0) / services.length
-    : 0;
+  // Consolidated: single pass for all service metrics
+  const serviceStats = useMemo(() => {
+    let activeCount = 0;
+    let priceSum = 0;
+    for (const s of services) {
+      if (s.activo) activeCount += 1;
+      priceSum += s.precio ?? 0;
+    }
+    return {
+      total: services.length,
+      active: activeCount,
+      avgPrice: services.length > 0 ? priceSum / services.length : 0,
+    };
+  }, [services]);
 
   return (
     <div className="space-y-6">
@@ -222,7 +231,7 @@ const ServiciosDashboard = () => {
                 onClick={() => openModal("create")}
                 className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-5 py-2.5 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
               >
-                <FaPlus />
+                <FaPlus aria-hidden="true" />
                 Nuevo servicio
               </button>
             </div>
@@ -233,33 +242,33 @@ const ServiciosDashboard = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="uppercase tracking-[0.32em] text-gray-500 text-[10px]">Servicios activos</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-900">
-                  {activeServices.toString().padStart(2, "0")}
+                <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
+                  {serviceStats.active.toString().padStart(2, "0")}
                 </p>
               </div>
-              <FaCheckCircle className="text-2xl text-emerald-400" />
+              <FaCheckCircle aria-hidden="true" className="text-2xl text-emerald-400" />
             </div>
           </div>
           <div className="rounded-2xl border border-gray-300 bg-white p-5 text-sm text-gray-700">
             <div className="flex justify-between items-start">
               <div>
                 <p className="uppercase tracking-[0.32em] text-gray-500 text-[10px]">Total catálogo</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-900">
-                  {totalServices.toString().padStart(2, "0")}
+                <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
+                  {serviceStats.total.toString().padStart(2, "0")}
                 </p>
               </div>
-              <FaListAlt className="text-2xl text-amber-400" />
+              <FaListAlt aria-hidden="true" className="text-2xl text-amber-400" />
             </div>
           </div>
           <div className="rounded-2xl border border-gray-300 bg-white p-5 text-sm text-gray-700">
             <div className="flex justify-between items-start">
               <div>
                 <p className="uppercase tracking-[0.32em] text-gray-500 text-[10px]">Ticket promedio</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-900">
-                  {currencyFormatter.format(avgPrice || 0)}
+                <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
+                  {currencyFormatter.format(serviceStats.avgPrice || 0)}
                 </p>
               </div>
-              <FaMoneyBillWave className="text-2xl text-blue-600" />
+              <FaMoneyBillWave aria-hidden="true" className="text-2xl text-blue-600" />
             </div>
           </div>
         </div>
@@ -267,12 +276,14 @@ const ServiciosDashboard = () => {
         <div className="flex flex-col gap-4 rounded-2xl border border-gray-300 bg-white p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="relative flex-1">
-              <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <FaSearch aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
               <input
+                type="search"
+                aria-label="Buscar servicios"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar por nombre o descripción"
-                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </div>
           </div>
@@ -307,7 +318,7 @@ const ServiciosDashboard = () => {
                       <td className="py-3">
                         <div className="flex items-start gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                            <FaStar />
+                            <FaStar aria-hidden="true" />
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900">{service.nombre}</p>
@@ -317,8 +328,8 @@ const ServiciosDashboard = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 text-gray-600">{service.duracion} min</td>
-                      <td className="py-3 text-gray-600">{currencyFormatter.format(service.precio ?? 0)}</td>
+                      <td className="py-3 tabular-nums text-gray-600">{service.duracion} min</td>
+                      <td className="py-3 tabular-nums text-gray-600">{currencyFormatter.format(service.precio ?? 0)}</td>
                       <td className="py-3 text-gray-600">
                         <span
                           className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.28em] ${
@@ -337,14 +348,14 @@ const ServiciosDashboard = () => {
                             onClick={() => openModal("edit", service)}
                             className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-blue-600 transition hover:bg-blue-50"
                           >
-                            <FaEdit /> Editar
+                            <FaEdit aria-hidden="true" /> Editar
                           </button>
                           <button
                             type="button"
                             onClick={() => openModal("delete", service)}
                             className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-red-400 transition hover:bg-red-500/15"
                           >
-                            <FaTrash /> Borrar
+                            <FaTrash aria-hidden="true" /> Borrar
                           </button>
                         </div>
                       </td>
@@ -394,7 +405,7 @@ const ServiciosDashboard = () => {
               type="text"
               value={form.nombre}
               onChange={(event) => handleChange("nombre", event.target.value)}
-              className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none ${
+              className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
                 formErrors.nombre ? "border-red-400/70" : "border-gray-300"
               }`}
               placeholder="Ej. Ritual Old School"
@@ -411,7 +422,7 @@ const ServiciosDashboard = () => {
                 step="0.1"
                 value={form.precio}
                 onChange={(event) => handleChange("precio", event.target.value)}
-                className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none ${
+                className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
                   formErrors.precio ? "border-red-400/70" : "border-gray-300"
                 }`}
               />
@@ -426,7 +437,7 @@ const ServiciosDashboard = () => {
                 step="5"
                 value={form.duracion}
                 onChange={(event) => handleChange("duracion", event.target.value)}
-                className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none ${
+                className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
                   formErrors.duracion ? "border-red-400/70" : "border-gray-300"
                 }`}
               />
@@ -441,7 +452,7 @@ const ServiciosDashboard = () => {
               onChange={(event) => handleChange("descripcion", event.target.value)}
               rows={4}
               placeholder="Detalle la experiencia, rituales incluidos o beneficios extras"
-              className="resize-none rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+              className="resize-none rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
             />
           </label>
 

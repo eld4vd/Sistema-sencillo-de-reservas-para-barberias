@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
 import retratoDueno from "../../../assets/images/Sobre-Nosotros/dueño.jpg";
 
+// rendering-hoist-jsx: static tag data hoisted outside component
+const etiquetas = ["Sucre", "Buenos Aires", "Música urbana", "Hospitalidad cálida"];
+
 const HeroSobreNosotros = () => {
   return (
   <section 
@@ -51,7 +54,7 @@ const HeroSobreNosotros = () => {
             “Cada cliente merece un cierre impecable y una charla sincera.”
           </blockquote>
           <div className="flex flex-wrap gap-3 text-xs text-[#FAF8F3]/70">
-            {["Sucre", "Buenos Aires", "Música urbana", "Hospitalidad cálida"].map((etiqueta) => (
+            {etiquetas.map((etiqueta) => (
               <span
                 key={etiqueta}
                 className="rounded-full border border-[#2A2A2A] bg-[#2A2A2A]/70 px-4 py-2"

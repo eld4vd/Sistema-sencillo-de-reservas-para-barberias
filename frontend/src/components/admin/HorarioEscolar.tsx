@@ -158,7 +158,7 @@ const HorarioEscolar: React.FC<HorarioEscolarProps> = ({
                   min={dateInputMin}
                   max={dateInputMax}
                   onChange={onDateInputChange}
-                  className="w-36 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-[11px] text-gray-900 focus:border-blue-500 focus:outline-none"
+                  className="w-36 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-[11px] text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                 />
 
             <button

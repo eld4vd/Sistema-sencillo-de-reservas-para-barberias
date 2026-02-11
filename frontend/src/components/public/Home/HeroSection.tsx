@@ -1,7 +1,7 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FaCalendarAlt, FaStar, FaUsers } from "react-icons/fa";
+import { FaCalendarAlt } from "react-icons/fa";
 import presentationVideo from "../../../assets/videos/presentacion.webm";
 
 
@@ -16,7 +16,6 @@ const HeroSection = () => {
   });
 
   const videoY = useTransform(scrollYProgress, [0, 1], [0, 100]);
-  const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.05]);
 
   // Cargar video DESPUÉS del first paint (no bloquea LCP)
   useEffect(() => {

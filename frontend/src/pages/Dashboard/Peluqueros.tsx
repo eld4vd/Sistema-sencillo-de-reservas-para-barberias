@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FaClock, FaCut, FaEdit, FaPlus, FaSearch, FaTrash, FaUserTie } from "react-icons/fa";
 import type { Peluquero, CreatePeluqueroDto } from "../../models/Peluquero";
@@ -53,7 +53,7 @@ const PeluquerosDashboard = () => {
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
   const [originalServicios, setOriginalServicios] = useState<number[]>([]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -70,7 +70,7 @@ const PeluquerosDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -140,7 +140,7 @@ const PeluquerosDashboard = () => {
     });
   }, [peluqueros, search, servicioIdsPorPeluquero, servicioMap]);
 
-  const openModal = (mode: ModalMode, peluquero?: Peluquero) => {
+  const openModal = useCallback((mode: ModalMode, peluquero?: Peluquero) => {
     setModalMode(mode);
     setSelected(peluquero ?? null);
     setFormErrors({});
@@ -161,18 +161,18 @@ const PeluquerosDashboard = () => {
       });
       setOriginalServicios(serviciosVinculados);
     }
-  };
+  }, [servicioIdsPorPeluquero]);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setModalMode(null);
     setSelected(null);
     setForm({ ...defaultFormState });
     setFormErrors({});
     setMutationState("idle");
     setOriginalServicios([]);
-  };
+  }, []);
 
-  const handleChange = <K extends keyof PeluqueroFormState>(key: K, value: PeluqueroFormState[K]) => {
+  const handleChange = useCallback(<K extends keyof PeluqueroFormState>(key: K, value: PeluqueroFormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setFormErrors((prev) => {
       const next = { ...prev };
@@ -180,18 +180,18 @@ const PeluquerosDashboard = () => {
       delete next.general;
       return next;
     });
-  };
+  }, []);
 
-  const toggleDay = (day: string) => {
+  const toggleDay = useCallback((day: string) => {
     setForm((prev) => ({
       ...prev,
       diasLibres: prev.diasLibres.includes(day)
         ? prev.diasLibres.filter((value) => value !== day)
         : [...prev.diasLibres, day],
     }));
-  };
+  }, []);
 
-  const toggleServicio = (servicioId: number) => {
+  const toggleServicio = useCallback((servicioId: number) => {
     setForm((prev) => {
       const exists = prev.servicioIds.includes(servicioId);
       return {
@@ -207,7 +207,7 @@ const PeluquerosDashboard = () => {
       delete next.general;
       return next;
     });
-  };
+  }, []);
 
   const validate = (): FormErrors => {
     const errors: FormErrors = {};
@@ -320,9 +320,16 @@ const PeluquerosDashboard = () => {
     return () => window.clearTimeout(timeout);
   }, [flashMessage]);
 
-  const totalBarbers = peluqueros.length;
-  const withEspecialidad = peluqueros.filter((item) => Boolean(item.especialidad)).length;
-  const morningShift = peluqueros.filter((item) => (item.horarioInicio ?? "").slice(0, 2) <= "09").length;
+  // Consolidated: single pass for all barber metrics
+  const barberStats = useMemo(() => {
+    let withEspecialidad = 0;
+    let morningShift = 0;
+    for (const item of peluqueros) {
+      if (item.especialidad) withEspecialidad += 1;
+      if ((item.horarioInicio ?? "").slice(0, 2) <= "09") morningShift += 1;
+    }
+    return { total: peluqueros.length, withEspecialidad, morningShift };
+  }, [peluqueros]);
 
   return (
     <div className="space-y-6">
@@ -352,7 +359,7 @@ const PeluquerosDashboard = () => {
             onClick={() => openModal("create")}
             className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-5 py-2.5 text-xs uppercase tracking-[0.24em] text-blue-600 transition hover:border-blue-500 hover:bg-blue-50"
           >
-            <FaPlus />
+            <FaPlus aria-hidden="true" />
             Añadir peluquero
           </button>
         </div>
@@ -361,30 +368,30 @@ const PeluquerosDashboard = () => {
           <div className="rounded-2xl border border-gray-200 bg-white p-5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-[0.28em] text-gray-600">Equipo total</span>
-              <FaUserTie className="text-blue-600" />
+              <FaUserTie aria-hidden="true" className="text-blue-600" />
             </div>
-            <p className="mt-3 text-3xl font-semibold text-gray-900">
-              {totalBarbers.toString().padStart(2, "0")}
+            <p className="mt-3 text-3xl font-semibold tabular-nums text-gray-900">
+              {barberStats.total.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-gray-600">Barberos activos</p>
           </div>
           <div className="rounded-2xl border border-gray-200 bg-white p-5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-[0.28em] text-gray-600">Con especialidad</span>
-              <FaCut className="text-amber-400" />
+              <FaCut aria-hidden="true" className="text-amber-400" />
             </div>
-            <p className="mt-3 text-3xl font-semibold text-gray-900">
-              {withEspecialidad.toString().padStart(2, "0")}
+            <p className="mt-3 text-3xl font-semibold tabular-nums text-gray-900">
+              {barberStats.withEspecialidad.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-gray-600">Staff especializado</p>
           </div>
           <div className="rounded-2xl border border-gray-200 bg-white p-5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-[0.28em] text-gray-600">Turno matutino</span>
-              <FaClock className="text-emerald-400" />
+              <FaClock aria-hidden="true" className="text-emerald-400" />
             </div>
-            <p className="mt-3 text-3xl font-semibold text-gray-900">
-              {morningShift.toString().padStart(2, "0")}
+            <p className="mt-3 text-3xl font-semibold tabular-nums text-gray-900">
+              {barberStats.morningShift.toString().padStart(2, "0")}
             </p>
             <p className="mt-2 text-xs text-gray-600">Disponibles temprano</p>
           </div>
@@ -393,12 +400,14 @@ const PeluquerosDashboard = () => {
         <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="relative flex-1">
-              <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+              <FaSearch aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
               <input
+                type="search"
+                aria-label="Buscar peluqueros"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar por nombre, especialidad o día libre"
-                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </div>
           </div>
@@ -459,7 +468,7 @@ const PeluquerosDashboard = () => {
                               </div>
                             ) : (
                               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-blue-300 bg-blue-50 text-blue-600">
-                                <FaUserTie className="text-xl" />
+                                <FaUserTie aria-hidden="true" className="text-xl" />
                               </div>
                             )}
                             <div className="space-y-1">
@@ -477,7 +486,7 @@ const PeluquerosDashboard = () => {
                             <div>
                               <p className="text-[10px] uppercase tracking-[0.28em] text-gray-600">Horario</p>
                               <div className="mt-1 inline-flex items-center gap-2">
-                                <FaClock className="text-blue-600/80" />
+                                <FaClock aria-hidden="true" className="text-blue-600/80" />
                                 <span>
                                   {peluquero.horarioInicio?.slice(0, 5) ?? "—"} – {peluquero.horarioFin?.slice(0, 5) ?? "—"}
                                 </span>
@@ -517,7 +526,7 @@ const PeluquerosDashboard = () => {
                                     }`}
                                     title={isInactivo ? "Servicio inactivo en catálogo" : undefined}
                                   >
-                                    <FaCut className="text-[10px]" />
+                                    <FaCut aria-hidden="true" className="text-[10px]" />
                                     <span className="font-semibold tracking-[0.18em]">
                                       {servicioInfo.nombre}
                                     </span>
@@ -541,14 +550,14 @@ const PeluquerosDashboard = () => {
                               onClick={() => openModal("edit", peluquero)}
                               className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-blue-600 transition hover:bg-blue-50"
                             >
-                              <FaEdit /> Editar
+                              <FaEdit aria-hidden="true" /> Editar
                             </button>
                             <button
                               type="button"
                               onClick={() => openModal("delete", peluquero)}
                               className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs uppercase tracking-[0.22em] text-red-400 transition hover:bg-red-500/15"
                             >
-                              <FaTrash /> Borrar
+                              <FaTrash aria-hidden="true" /> Borrar
                             </button>
                           </div>
                         </td>
@@ -607,7 +616,7 @@ const PeluquerosDashboard = () => {
                 type="text"
                 value={form.nombre}
                 onChange={(event) => handleChange("nombre", event.target.value)}
-                className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none ${
+                className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
                   formErrors.nombre ? "border-red-400/70" : "border-gray-300"
                 }`}
                 placeholder="Ej. Sebastián Rocabado"
@@ -621,7 +630,7 @@ const PeluquerosDashboard = () => {
                 type="text"
                 value={form.especialidad}
                 onChange={(event) => handleChange("especialidad", event.target.value)}
-                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                 placeholder="Fade signature, grooming ejecutivo…"
               />
             </label>
@@ -634,7 +643,7 @@ const PeluquerosDashboard = () => {
                 type="time"
                 value={form.horarioInicio}
                 onChange={(event) => handleChange("horarioInicio", event.target.value)}
-                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
+                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </label>
             <label className="flex flex-col gap-2">
@@ -643,7 +652,7 @@ const PeluquerosDashboard = () => {
                 type="time"
                 value={form.horarioFin}
                 onChange={(event) => handleChange("horarioFin", event.target.value)}
-                className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none ${
+                className={`rounded-2xl border bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
                   formErrors.horarioFin ? "border-red-400/70" : "border-gray-300"
                 }`}
               />
@@ -705,7 +714,7 @@ const PeluquerosDashboard = () => {
                       title={isInactive ? "Servicio actualmente inactivo" : undefined}
                       aria-pressed={isSelected}
                     >
-                      <FaCut className="text-[10px]" />
+                      <FaCut aria-hidden="true" className="text-[10px]" />
                       <span className="font-semibold tracking-[0.18em]">{servicio.nombre}</span>
                       {typeof servicio.duracion === "number" ? (
                         <span className="text-[10px] uppercase tracking-[0.28em] text-gray-700">
@@ -726,8 +735,8 @@ const PeluquerosDashboard = () => {
                 type="url"
                 value={form.fotoUrl}
                 onChange={(event) => handleChange("fotoUrl", event.target.value)}
-                placeholder="https://..."
-                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none"
+                placeholder="https://…"
+                className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
             </label>
             {form.fotoUrl ? (

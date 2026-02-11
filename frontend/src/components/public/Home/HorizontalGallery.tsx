@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, memo } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 // Importar imágenes
@@ -11,6 +11,7 @@ import flow from "../../../assets/images/cortes/flow.jpg";
 import mullet from "../../../assets/images/cortes/mullet-corto.jpg";
 import crewCut from "../../../assets/images/cortes/crew-cut-texturizado.jpg";
 
+// rendering-hoist-jsx: static data hoisted outside component
 const cuts = [
   { image: midFade, name: "Mid Fade" },
   { image: pompadour, name: "Pompadour" },
@@ -22,6 +23,62 @@ const cuts = [
   { image: crewCut, name: "Crew Cut" },
 ];
 
+const reversedCuts = [...cuts].reverse();
+
+// rendering-hoist-jsx: static gradient overlays
+const leftGradient = (
+  <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black to-transparent" />
+);
+const rightGradient = (
+  <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black to-transparent" />
+);
+
+// rerender-memo: extract gallery card into memoized component
+interface GalleryCardProps {
+  image: string;
+  name: string;
+  index: number;
+  prefix: string;
+  height: string;
+  width: string;
+  showSubtext?: boolean;
+}
+
+const GalleryCard = memo(function GalleryCard({
+  image,
+  name,
+  index,
+  prefix,
+  height,
+  width,
+  showSubtext = true,
+}: GalleryCardProps) {
+  return (
+    <motion.div
+      key={`${prefix}-${name}`}
+      initial={{ opacity: 0, scale: 0.9 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.05 }}
+      className={`group relative ${height} ${width} flex-shrink-0 overflow-hidden rounded-2xl`}
+    >
+      <img
+        src={image}
+        alt={name}
+        loading="lazy"
+        decoding="async"
+        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-full transition-transform duration-300 group-hover:translate-y-0">
+        <p className="text-lg font-semibold text-white">{name}</p>
+        {showSubtext ? <p className="text-sm text-white/60">Ver estilo →</p> : null}
+      </div>
+      <div className="absolute inset-0 rounded-2xl border border-white/0 transition-[border-color] duration-300 group-hover:border-[#B8935E]/50" />
+    </motion.div>
+  );
+});
+
 const HorizontalGallery = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -30,7 +87,6 @@ const HorizontalGallery = () => {
     offset: ["start end", "end start"],
   });
 
-  // Movimiento horizontal basado en scroll vertical
   const x = useTransform(scrollYProgress, [0, 1], ["5%", "-45%"]);
   const x2 = useTransform(scrollYProgress, [0, 1], ["-5%", "25%"]);
 
@@ -63,60 +119,37 @@ const HorizontalGallery = () => {
       {/* Primera fila - se mueve hacia la izquierda */}
       <motion.div style={{ x }} className="mb-6 flex gap-6 pl-6">
         {cuts.map((cut, index) => (
-          <motion.div
+          <GalleryCard
             key={`row1-${cut.name}`}
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.05 }}
-            className="group relative h-[350px] w-[280px] flex-shrink-0 overflow-hidden rounded-2xl md:h-[450px] md:w-[350px]"
-          >
-            <img
-              src={cut.image}
-              alt={cut.name}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-            />
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            {/* Nombre */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-full transition-transform duration-300 group-hover:translate-y-0">
-              <p className="text-lg font-semibold text-white">{cut.name}</p>
-              <p className="text-sm text-white/60">Ver estilo →</p>
-            </div>
-            {/* Borde en hover */}
-            <div className="absolute inset-0 rounded-2xl border border-white/0 transition-all duration-300 group-hover:border-[#B8935E]/50" />
-          </motion.div>
+            image={cut.image}
+            name={cut.name}
+            index={index}
+            prefix="row1"
+            height="h-[350px] md:h-[450px]"
+            width="w-[280px] md:w-[350px]"
+          />
         ))}
       </motion.div>
 
       {/* Segunda fila - se mueve hacia la derecha */}
       <motion.div style={{ x: x2 }} className="flex gap-6 pl-6">
-        {[...cuts].reverse().map((cut, index) => (
-          <motion.div
+        {reversedCuts.map((cut, index) => (
+          <GalleryCard
             key={`row2-${cut.name}`}
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.05 }}
-            className="group relative h-[300px] w-[240px] flex-shrink-0 overflow-hidden rounded-2xl md:h-[400px] md:w-[320px]"
-          >
-            <img
-              src={cut.image}
-              alt={cut.name}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-full transition-transform duration-300 group-hover:translate-y-0">
-              <p className="text-lg font-semibold text-white">{cut.name}</p>
-            </div>
-            <div className="absolute inset-0 rounded-2xl border border-white/0 transition-all duration-300 group-hover:border-[#B8935E]/50" />
-          </motion.div>
+            image={cut.image}
+            name={cut.name}
+            index={index}
+            prefix="row2"
+            height="h-[300px] md:h-[400px]"
+            width="w-[240px] md:w-[320px]"
+            showSubtext={false}
+          />
         ))}
       </motion.div>
 
       {/* Decoración lateral */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black to-transparent" />
+      {leftGradient}
+      {rightGradient}
     </section>
   );
 };

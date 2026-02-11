@@ -1,6 +1,21 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { FaTimes } from "react-icons/fa";
 import { useNotifications } from "../../hooks/useNotifications";
+
+// rendering-hoist-jsx: hoist static maps outside component
+const TOAST_STYLES: Record<string, string> = {
+  nueva_cita: "bg-green-50 border-green-200 text-green-900",
+  cita_cancelada: "bg-red-50 border-red-200 text-red-900",
+  cita_completada: "bg-blue-50 border-blue-200 text-blue-900",
+};
+const DEFAULT_TOAST_STYLE = "bg-gray-50 border-gray-200 text-gray-900";
+
+const TOAST_ICONS: Record<string, string> = {
+  nueva_cita: "🎉",
+  cita_cancelada: "❌",
+  cita_completada: "✅",
+};
+const DEFAULT_TOAST_ICON = "ℹ️";
 
 const ToastNotification = () => {
   const { notifications } = useNotifications();
@@ -25,38 +40,17 @@ const ToastNotification = () => {
     }
   }, [notifications]);
 
-  const handleClose = (notificationId: string) => {
+  // rerender-memo: stable handler ref
+  const handleClose = useCallback((notificationId: string) => {
     setVisibleToasts((prev) => prev.filter((id) => id !== notificationId));
-  };
+  }, []);
 
-  const getToastStyles = (type: string) => {
-    switch (type) {
-      case "nueva_cita":
-        return "bg-green-50 border-green-200 text-green-900";
-      case "cita_cancelada":
-        return "bg-red-50 border-red-200 text-red-900";
-      case "cita_completada":
-        return "bg-blue-50 border-blue-200 text-blue-900";
-      default:
-        return "bg-gray-50 border-gray-200 text-gray-900";
-    }
-  };
+  // js-set-map-lookups: use Set for O(1) lookup instead of .includes() O(n)
+  const visibleSet = useMemo(() => new Set(visibleToasts), [visibleToasts]);
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "nueva_cita":
-        return "🎉";
-      case "cita_cancelada":
-        return "❌";
-      case "cita_completada":
-        return "✅";
-      default:
-        return "ℹ️";
-    }
-  };
-
-  const visibleNotifications = notifications.filter((n) =>
-    visibleToasts.includes(n.id)
+  const visibleNotifications = useMemo(
+    () => notifications.filter((n) => visibleSet.has(n.id)),
+    [notifications, visibleSet]
   );
 
   if (visibleNotifications.length === 0) return null;
@@ -66,15 +60,13 @@ const ToastNotification = () => {
       {visibleNotifications.map((notification) => (
         <div
           key={notification.id}
-          className={`pointer-events-auto animate-slide-in-right rounded-lg border-2 px-4 py-3 shadow-lg ${getToastStyles(
-            notification.type
-          )}`}
+          className={`pointer-events-auto animate-slide-in-right rounded-lg border-2 px-4 py-3 shadow-lg ${TOAST_STYLES[notification.type] ?? DEFAULT_TOAST_STYLE}`}
           style={{
             animation: "slideInRight 0.3s ease-out",
           }}
         >
           <div className="flex items-start gap-3">
-            <span className="text-2xl">{getIcon(notification.type)}</span>
+            <span className="text-2xl">{TOAST_ICONS[notification.type] ?? DEFAULT_TOAST_ICON}</span>
             <div className="flex-1">
               <p className="text-sm font-semibold">{notification.message}</p>
             </div>

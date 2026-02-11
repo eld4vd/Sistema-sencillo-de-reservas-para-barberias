@@ -16,12 +16,14 @@ const VenueSection = lazy(
 );
 const FinalCTA = lazy(() => import("../components/public/Home/FinalCTA"));
 
-// Loading skeleton minimalista
-const SectionSkeleton = () => (
+// rendering-hoist-jsx: static skeleton element, not a component
+const sectionSkeleton = (
   <div className="flex min-h-[50vh] items-center justify-center bg-black">
     <div className="h-1 w-16 animate-pulse rounded-full bg-[#B8935E]/30" />
   </div>
 );
+
+const marqueeSkeleton = <div className="h-16 bg-[#B8935E]" />;
 
 const Home = () => {
   return (
@@ -30,27 +32,27 @@ const Home = () => {
       <HeroCinematic />
 
       {/* Marquee separador */}
-      <Suspense fallback={<div className="h-16 bg-[#B8935E]" />}>
+      <Suspense fallback={marqueeSkeleton}>
         <InfiniteMarquee />
       </Suspense>
 
       {/* Galería horizontal con parallax */}
-      <Suspense fallback={<SectionSkeleton />}>
+      <Suspense fallback={sectionSkeleton}>
         <HorizontalGallery />
       </Suspense>
 
       {/* Servicios */}
-      <Suspense fallback={<SectionSkeleton />}>
+      <Suspense fallback={sectionSkeleton}>
         <ServicesSection />
       </Suspense>
 
       {/* Venue - Nuestro local */}
-      <Suspense fallback={<SectionSkeleton />}>
+      <Suspense fallback={sectionSkeleton}>
         <VenueSection />
       </Suspense>
 
       {/* CTA Final */}
-      <Suspense fallback={<SectionSkeleton />}>
+      <Suspense fallback={sectionSkeleton}>
         <FinalCTA />
       </Suspense>
     </main>

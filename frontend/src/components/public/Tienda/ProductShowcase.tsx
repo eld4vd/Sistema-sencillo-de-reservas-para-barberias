@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useState, memo, useMemo } from "react";
+import { useEffect, useState, useCallback, memo, useMemo } from "react";
 import { FaSearch, FaBox, FaFilter } from "react-icons/fa";
 import { productosService } from "../../../services/productosService";
 import type { Producto } from "../../../models/Producto";
@@ -7,6 +7,7 @@ import { productLogger } from "../../../helpers/logging";
 
 // ✅ Componente memoizado para evitar re-renders innecesarios
 const ProductCard = memo(({ producto, index }: { producto: Producto; index: number }) => {
+  // rendering-conditional-render: explicit ternaries for stock badges
   const getStockBadge = (stock: number) => {
     if (stock === 0) {
       return (
@@ -14,13 +15,15 @@ const ProductCard = memo(({ producto, index }: { producto: Producto; index: numb
           Agotado
         </span>
       );
-    } else if (stock < 5) {
+    }
+    if (stock < 5) {
       return (
         <span className="bg-orange-600 text-white text-xs font-medium px-2.5 py-1 rounded-full">
           Últimas {stock} unidades
         </span>
       );
-    } else if (stock < 10) {
+    }
+    if (stock < 10) {
       return (
         <span className="bg-yellow-600 text-white text-xs font-medium px-2.5 py-1 rounded-full">
           Stock limitado
@@ -36,7 +39,7 @@ const ProductCard = memo(({ producto, index }: { producto: Producto; index: numb
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.03 }}
-      className="group flex h-full flex-col overflow-hidden rounded-xl border border-gray-800/70 bg-[#111111] transition-all hover:border-[#B8935E]/40 hover:bg-[#181818] hover:shadow-xl"
+      className="group flex h-full flex-col overflow-hidden rounded-xl border border-gray-800/70 bg-[#111111] transition-[border-color,background-color,box-shadow] hover:border-[#B8935E]/40 hover:bg-[#181818] hover:shadow-xl"
     >
       {/* Product Image - Aspect ratio más cuadrado */}
       <div className="relative aspect-square bg-[#0F0F0F] overflow-hidden">
@@ -68,11 +71,11 @@ const ProductCard = memo(({ producto, index }: { producto: Producto; index: numb
       <div className="flex flex-1 flex-col p-4">
         {/* Category + Name en línea */}
         <div className="mb-2">
-          {producto.categoria && (
+          {producto.categoria ? (
             <span className="text-[10px] uppercase tracking-wider text-gray-500">
               {producto.categoria}
             </span>
-          )}
+          ) : null}
           <h3 className="mt-1 text-base font-medium text-[#FAF8F3] line-clamp-1">
             {producto.nombre}
           </h3>
@@ -101,13 +104,12 @@ ProductCard.displayName = 'ProductCard';
 
 const ProductShowcase = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [filteredProductos, setFilteredProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategoria, setSelectedCategoria] = useState<string>("Todos");
 
-  // ✅ Categorías derivadas del catálogo disponible
+  // ✅ rerender-derived-state-no-effect: derive categorias during render, no state needed
   const categorias = useMemo(() => {
     const dynamicCategories = Array.from(
       new Set(
@@ -116,90 +118,89 @@ const ProductShowcase = () => {
           .filter((categoria): categoria is string => Boolean(categoria))
       )
     );
-
     return ["Todos", ...dynamicCategories];
   }, [productos]);
 
-  useEffect(() => {
-    if (selectedCategoria !== "Todos" && !categorias.includes(selectedCategoria)) {
-      setSelectedCategoria("Todos");
+  // ✅ rerender-derived-state-no-effect: derive filtered list during render, NOT in effect+state
+  // This was previously stored in a separate useState + synced via useEffect, causing extra renders
+  const filteredProductos = useMemo(() => {
+    // js-early-exit: reset category if it no longer exists
+    const effectiveCategoria =
+      selectedCategoria !== "Todos" && !categorias.includes(selectedCategoria)
+        ? "Todos"
+        : selectedCategoria;
+
+    let filtered = productos;
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      // js-combine-iterations: single filter pass for both fields
+      filtered = filtered.filter((producto) =>
+        producto.nombre.toLowerCase().includes(term) ||
+        producto.descripcion?.toLowerCase().includes(term)
+      );
     }
-  }, [categorias, selectedCategoria]);
+
+    if (effectiveCategoria !== "Todos") {
+      filtered = filtered.filter(
+        (producto) =>
+          producto.categoria?.toLowerCase() === effectiveCategoria.toLowerCase()
+      );
+    }
+
+    return filtered;
+  }, [productos, searchTerm, selectedCategoria, categorias]);
 
   useEffect(() => {
     loadProductos();
   }, []);
 
-  // ✅ useMemo para filtrado eficiente
-  const filteredProductosMemo = useMemo(() => {
-    let filtered = productos;
-
-    if (searchTerm) {
-      filtered = filtered.filter((producto) =>
-        producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        producto.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (selectedCategoria !== "Todos") {
-      filtered = filtered.filter(
-        (producto) =>
-          producto.categoria?.toLowerCase() === selectedCategoria.toLowerCase()
-      );
-    }
-
-    return filtered;
-  }, [productos, searchTerm, selectedCategoria]);
-
-  useEffect(() => {
-    setFilteredProductos(filteredProductosMemo);
-  }, [filteredProductosMemo]);
-
   // Auto-refresh inteligente para actualizar stock
-  // 3 minutos es suficiente para productos de barbería
   useEffect(() => {
     const REFRESH_INTERVAL = 3 * 60 * 1000; // 3 minutos
 
     const intervalId = setInterval(() => {
-      // Solo actualizar si la página está visible
       if (document.visibilityState === 'visible') {
         loadProductosSilent();
       }
     }, REFRESH_INTERVAL);
 
-    // Limpiar interval al desmontar
     return () => clearInterval(intervalId);
   }, []);
 
-  // Actualización silenciosa sin interrumpir la experiencia del usuario
-  const loadProductosSilent = async () => {
+  // rerender-functional-setstate: stable callbacks
+  const loadProductosSilent = useCallback(async () => {
     try {
       const data = await productosService.listActive();
       setProductos(data);
       setError(null);
-      // No actualizar filteredProductos para preservar búsqueda activa del usuario
-    } catch (error) {
-      productLogger.error("Error al actualizar productos:", error);
-      // Fallo silencioso - no afecta la UX
+    } catch (err) {
+      productLogger.error("Error al actualizar productos:", err);
     }
-  };
+  }, []);
 
-  const loadProductos = async () => {
+  const loadProductos = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await productosService.listActive();
       setProductos(data);
-      setFilteredProductos(data);
-    } catch (error) {
-      productLogger.error("Error al cargar productos:", error);
+    } catch (err) {
+      productLogger.error("Error al cargar productos:", err);
       setError("No pudimos actualizar el catálogo. Intenta nuevamente en unos segundos.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Función getStockBadge removida - ahora está dentro de ProductCard memoizado
+  // rerender-move-effect-to-event: search/filter handlers as event handlers
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const handleCategoriaChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCategoria(e.target.value);
+  }, []);
 
   return (
     <section className="py-12 px-4 sm:px-6 lg:px-8">
@@ -227,10 +228,10 @@ const ProductShowcase = () => {
               <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400" aria-hidden="true" />
               <input
                 type="text"
-                placeholder="Buscar productos..."
+                placeholder="Buscar productos…"
                 aria-label="Buscar productos"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
                 className="w-full rounded-lg border border-gray-700 bg-[#161616] py-2.5 pl-10 pr-4 text-sm text-[#FAF8F3] outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#B8935E]"
               />
             </div>
@@ -239,7 +240,7 @@ const ProductShowcase = () => {
               <select
                 value={selectedCategoria}
                 aria-label="Filtrar por categoría"
-                onChange={(e) => setSelectedCategoria(e.target.value)}
+                onChange={handleCategoriaChange}
                 className="cursor-pointer rounded-lg border border-gray-700 bg-[#161616] px-4 py-2.5 text-sm text-[#FAF8F3] outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#B8935E]"
               >
                 {categorias.map((categoria) => (
@@ -253,7 +254,7 @@ const ProductShowcase = () => {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-lg border border-red-600/40 bg-red-600/10 px-4 py-3 text-sm text-red-200">
+          <div role="alert" className="mb-6 rounded-lg border border-red-600/40 bg-red-600/10 px-4 py-3 text-sm text-red-200">
             {error}
           </div>
         )}

@@ -1,13 +1,30 @@
-import { useRef, useState } from "react";
+import { useRef, useCallback } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FaArrowRight } from "react-icons/fa";
 
 import famoso from "../../../assets/images/lugar/famoso.jpg";
 
+// rendering-hoist-jsx: static decorative elements
+const locationInfo = (
+  <div className="absolute bottom-8 right-8 text-right">
+    <p className="text-xs uppercase tracking-[0.3em] text-white/40">
+      Plaza 25 de Mayo
+    </p>
+    <p className="text-xs uppercase tracking-[0.3em] text-white/40">
+      Sucre, Bolivia
+    </p>
+  </div>
+);
+
+const borderGlow = (
+  <div className="pointer-events-none absolute inset-0 rounded-3xl border border-[#B8935E]/0 transition-[border-color] duration-500 group-hover:border-[#B8935E]/30" />
+);
+
 const FinalCTA = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
+  // rerender-use-ref-transient-values: isHovered is transient, no re-render needed
+  const isHoveredRef = useRef(false);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -19,20 +36,26 @@ const FinalCTA = () => {
   const rotateX = useTransform(y, [-300, 300], [5, -5]);
   const rotateY = useTransform(x, [-300, 300], [-5, 5]);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
+  // rerender-functional-setstate + rerender-move-effect-to-event: callbacks stable
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
     mouseX.set(e.clientX - centerX);
     mouseY.set(e.clientY - centerY);
-  };
+  }, [mouseX, mouseY]);
 
-  const handleMouseLeave = () => {
+  const handleMouseEnter = useCallback(() => {
+    isHoveredRef.current = true;
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
     mouseX.set(0);
     mouseY.set(0);
-    setIsHovered(false);
-  };
+    isHoveredRef.current = false;
+  }, [mouseX, mouseY]);
 
   return (
     <section className="relative overflow-hidden bg-black py-32">
@@ -40,11 +63,11 @@ const FinalCTA = () => {
         <motion.div
           ref={containerRef}
           onMouseMove={handleMouseMove}
-          onMouseEnter={() => setIsHovered(true)}
+          onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
           style={{
-            rotateX: isHovered ? rotateX : 0,
-            rotateY: isHovered ? rotateY : 0,
+            rotateX,
+            rotateY,
             transformPerspective: 1200,
           }}
           className="group relative overflow-hidden rounded-3xl"
@@ -105,26 +128,19 @@ const FinalCTA = () => {
             >
               <Link
                 to="/reservas"
-                className="group/btn inline-flex items-center gap-3 rounded-full bg-[#B8935E] px-8 py-4 text-sm font-semibold uppercase tracking-wider text-black transition-all duration-300 hover:gap-5 hover:bg-white"
+                className="group/btn inline-flex items-center gap-3 rounded-full bg-[#B8935E] px-8 py-4 text-sm font-semibold uppercase tracking-wider text-black transition-[background-color,color,gap] duration-300 hover:gap-5 hover:bg-white"
               >
                 Reservar Ahora
-                <FaArrowRight className="transition-transform duration-300 group-hover/btn:translate-x-1" />
+                <FaArrowRight className="transition-transform duration-300 group-hover/btn:translate-x-1" aria-hidden="true" />
               </Link>
             </motion.div>
           </div>
 
           {/* Detalles decorativos */}
-          <div className="absolute bottom-8 right-8 text-right">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/40">
-              Plaza 25 de Mayo
-            </p>
-            <p className="text-xs uppercase tracking-[0.3em] text-white/40">
-              Sucre, Bolivia
-            </p>
-          </div>
+          {locationInfo}
 
           {/* Border glow en hover */}
-          <div className="pointer-events-none absolute inset-0 rounded-3xl border border-[#B8935E]/0 transition-all duration-500 group-hover:border-[#B8935E]/30" />
+          {borderGlow}
         </motion.div>
       </div>
     </section>

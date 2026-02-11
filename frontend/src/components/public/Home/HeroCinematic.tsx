@@ -1,7 +1,44 @@
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import presentationVideo from "../../../assets/videos/Presentacion.webm";
+
+// rendering-hoist-jsx: static JSX elements hoisted outside component
+const scrollIndicator = (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ delay: 2 }}
+    className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2"
+  >
+    <motion.div
+      animate={{ y: [0, 8, 0] }}
+      transition={{ duration: 1.5, repeat: Infinity }}
+      className="flex flex-col items-center gap-2"
+    >
+      <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
+        Scroll
+      </span>
+      <div className="h-12 w-[1px] bg-gradient-to-b from-white/40 to-transparent" />
+    </motion.div>
+  </motion.div>
+);
+
+const sideDetail = (
+  <div className="absolute right-6 top-1/2 z-10 hidden -translate-y-1/2 md:block">
+    <div className="flex flex-col items-center gap-4">
+      <div className="h-20 w-[1px] bg-white/20" />
+      <span className="rotate-90 text-[10px] uppercase tracking-[0.3em] text-white/40">
+        Est. 2020
+      </span>
+      <div className="h-20 w-[1px] bg-white/20" />
+    </div>
+  </div>
+);
+
+const videoOverlay = (
+  <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" />
+);
 
 const HeroCinematic = () => {
   const containerRef = useRef<HTMLElement>(null);
@@ -17,11 +54,32 @@ const HeroCinematic = () => {
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
   const y = useTransform(scrollYProgress, [0, 1], [0, 150]);
 
+  const handleVideoLoaded = useCallback(() => setVideoLoaded(true), []);
+
+  // Ensure video plays and is visible on mount/remount (SPA navigation)
+  // and when returning from a hidden tab
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.src = presentationVideo;
-      videoRef.current.load();
+    const video = videoRef.current;
+    if (!video) return;
+
+    // If the video is already loaded from cache (readyState >= HAVE_CURRENT_DATA),
+    // onLoadedData won't fire again on remount — force visible
+    if (video.readyState >= 2) {
+      setVideoLoaded(true);
     }
+
+    // Force play on mount (autoPlay can fail silently)
+    video.play().catch(() => {});
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        video.play().catch(() => {});
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
   return (
@@ -33,6 +91,7 @@ const HeroCinematic = () => {
       <motion.div style={{ scale }} className="absolute inset-0">
         <video
           ref={videoRef}
+          src={presentationVideo}
           className={`h-full w-full object-cover transition-opacity duration-1000 ${
             videoLoaded ? "opacity-100" : "opacity-0"
           }`}
@@ -40,10 +99,10 @@ const HeroCinematic = () => {
           loop
           muted
           playsInline
-          onLoadedData={() => setVideoLoaded(true)}
+          onLoadedData={handleVideoLoaded}
         />
         {/* Overlay gradiente */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" />
+        {videoOverlay}
       </motion.div>
 
       {/* Contenido Central */}
@@ -106,7 +165,7 @@ const HeroCinematic = () => {
         >
           <Link
             to="/reservas"
-            className="group relative overflow-hidden rounded-full bg-white px-10 py-4 text-sm font-semibold uppercase tracking-wider text-black transition-all duration-300 hover:bg-[#B8935E] hover:text-white"
+            className="group relative overflow-hidden rounded-full bg-white px-10 py-4 text-sm font-semibold uppercase tracking-wider text-black transition-colors duration-300 hover:bg-[#B8935E] hover:text-white"
           >
             <span className="relative z-10">Reservar Ahora</span>
           </Link>
@@ -114,34 +173,10 @@ const HeroCinematic = () => {
       </motion.div>
 
       {/* Scroll Indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-        className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2"
-      >
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="flex flex-col items-center gap-2"
-        >
-          <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
-            Scroll
-          </span>
-          <div className="h-12 w-[1px] bg-gradient-to-b from-white/40 to-transparent" />
-        </motion.div>
-      </motion.div>
+      {scrollIndicator}
 
       {/* Detalle lateral */}
-      <div className="absolute right-6 top-1/2 z-10 hidden -translate-y-1/2 md:block">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-20 w-[1px] bg-white/20" />
-          <span className="rotate-90 text-[10px] uppercase tracking-[0.3em] text-white/40">
-            Est. 2020
-          </span>
-          <div className="h-20 w-[1px] bg-white/20" />
-        </div>
-      </div>
+      {sideDetail}
     </section>
   );
 };
