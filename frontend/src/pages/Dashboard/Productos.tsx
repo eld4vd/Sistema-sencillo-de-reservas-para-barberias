@@ -484,7 +484,7 @@ const ProductosDashboard = () => {
               <input
                 type="text"
                 value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
                 required
                 className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                 placeholder="Gel Ultra Strong"
@@ -496,7 +496,7 @@ const ProductosDashboard = () => {
               <input
                 type="text"
                 value={formData.categoria}
-                onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, categoria: e.target.value }))}
                 className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                 placeholder="Gel, Pomada, Cera…"
               />
@@ -511,7 +511,7 @@ const ProductosDashboard = () => {
                 step="0.01"
                 min="0"
                 value={formData.precio}
-                onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
+                onChange={(e) => setFormData(prev => ({ ...prev, precio: parseFloat(e.target.value) }))}
                 required
                 className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
@@ -523,7 +523,7 @@ const ProductosDashboard = () => {
                 type="number"
                 min="0"
                 value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
+                onChange={(e) => setFormData(prev => ({ ...prev, stock: parseInt(e.target.value) }))}
                 required
                 className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               />
@@ -535,7 +535,7 @@ const ProductosDashboard = () => {
             <input
               type="url"
               value={formData.imagenUrl}
-              onChange={(e) => setFormData({ ...formData, imagenUrl: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, imagenUrl: e.target.value }))}
               className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               placeholder="https://…"
             />
@@ -545,7 +545,7 @@ const ProductosDashboard = () => {
             <span className="text-xs uppercase tracking-[0.28em] text-gray-700">Descripción</span>
             <textarea
               value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+              onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
               rows={3}
               className="rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
               placeholder="Descripción del producto…"
@@ -556,7 +556,7 @@ const ProductosDashboard = () => {
             <input
               type="checkbox"
               checked={formData.activo}
-              onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+              onChange={(e) => setFormData(prev => ({ ...prev, activo: e.target.checked }))}
               className="h-5 w-5 rounded border-gray-300 bg-white text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm text-gray-900">Producto activo (visible en la tienda)</span>
@@ -597,14 +597,14 @@ const ProductosDashboard = () => {
           </>
         }
       >
-        {deleteTarget && (
+        {deleteTarget ? (
           <div className="space-y-4 text-sm">
             <p className="text-gray-900">
               ¿Estás seguro de eliminar el producto <strong>"{deleteTarget.nombre}"</strong>?
             </p>
             <p className="text-gray-500">Esta acción no se puede deshacer.</p>
           </div>
-        )}
+        ) : null}
       </AdminModal>
     </div>
   );

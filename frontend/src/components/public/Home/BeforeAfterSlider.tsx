@@ -20,21 +20,18 @@ const BeforeAfterSlider = ({ beforeImage, afterImage, altText = "Transformación
     setSliderPosition(percent);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      handleMove(e.clientX);
-    }
-  };
-
-  const handleTouchMove = (e: TouchEvent) => {
-    if (isDragging) {
-      handleMove(e.touches[0].clientX);
-    }
-  };
-
+  // Mover handlers dentro del useEffect para evitar stale closures
   useEffect(() => {
     const handleMouseUp = () => setIsDragging(false);
-    
+
+    const handleMouseMove = (e: MouseEvent) => {
+      handleMove(e.clientX);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      handleMove(e.touches[0].clientX);
+    };
+
     if (isDragging) {
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("touchmove", handleTouchMove);

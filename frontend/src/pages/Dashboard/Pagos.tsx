@@ -506,22 +506,23 @@ const PagosDashboard = () => {
 
               <div className="flex items-center gap-2">
                 {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                  .filter((page) => {
+                  .flatMap((page, _i, allPages) => {
                     const current = pagination.currentPage;
-                    return (
-                      page === 1 ||
-                      page === pagination.totalPages ||
-                      (page >= current - 1 && page <= current + 1)
-                    );
-                  })
-                  .map((page, index, array) => {
-                    const showEllipsis =
-                      index > 0 && page - array[index - 1] > 1;
-                    return (
+                    if (
+                      page !== 1 &&
+                      page !== pagination.totalPages &&
+                      (page < current - 1 || page > current + 1)
+                    ) return [];
+
+                    const prevVisible = allPages.slice(0, allPages.indexOf(page)).reverse()
+                      .find(p => p === 1 || p === pagination.totalPages || (p >= current - 1 && p <= current + 1));
+                    const showEllipsis = prevVisible !== undefined && page - prevVisible > 1;
+
+                    return [
                       <div key={page} className="flex items-center gap-2">
-                        {showEllipsis && (
+                        {showEllipsis ? (
                           <span className="text-gray-900/30">…</span>
-                        )}
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => handlePageChange(page)}
@@ -533,8 +534,8 @@ const PagosDashboard = () => {
                         >
                           {page}
                         </button>
-                      </div>
-                    );
+                      </div>,
+                    ];
                   })}
               </div>
 

@@ -181,7 +181,14 @@ const ServiciosDashboard = () => {
     return () => window.clearTimeout(timeout);
   }, [flashMessage]);
 
-  const activeServices = services.filter((s) => s.activo).length;
+  // js-combine-iterations: contador memoizado en una sola pasada
+  const activeServices = useMemo(() => {
+    let count = 0;
+    for (const s of services) {
+      if (s.activo) count++;
+    }
+    return count;
+  }, [services]);
 
   return (
     <>
@@ -280,9 +287,9 @@ const ServiciosDashboard = () => {
                       <td className="px-4 py-4">
                         <div>
                           <p className="font-semibold text-gray-900">{service.nombre}</p>
-                          {service.descripcion && (
+                          {service.descripcion ? (
                             <p className="mt-1 text-xs text-gray-500 line-clamp-2">{service.descripcion}</p>
-                          )}
+                          ) : null}
                         </div>
                       </td>
                       <td className="px-4 py-4 text-gray-600">

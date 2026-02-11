@@ -22,7 +22,7 @@ import {
   FaUser,
 } from "react-icons/fa";
 import { FaMoneyBillWave, FaQrcode, FaScissors } from "react-icons/fa6";
-import QRCode from "qrcode";
+// bundle-dynamic-imports: QRCode se importa dinámicamente solo cuando se necesita
 import type { Servicio } from "../../../models/Servicio";
 import type { Peluquero } from "../../../models/Peluquero";
 import type { PeluquerosServicio } from "../../../models/Peluquero-Servicio";
@@ -474,15 +474,8 @@ const ReservationBookingForm = ({
   );
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [confirmationModal, setConfirmationModal] = useState<boolean>(false);
-  const [availabilityCheck, setAvailabilityCheck] = useState<{
-    checking: boolean;
-    available: boolean | null;
-    message: string | null;
-  }>({
-    checking: false,
-    available: null,
-    message: null,
-  });
+  // rerender-derived-state-no-effect: disponibilidad derivada con useMemo (lógica síncrona)
+  // Se declara más abajo como useMemo después de destructurar form
 
   useEffect(() => {
     let cancelled = false;
@@ -609,12 +602,15 @@ const ReservationBookingForm = ({
       return true;
     });
 
-    return new Set(
-      relevant
-        .map((appointment) => isoToTime(appointment.fechaHora))
-        .filter((slot): slot is string => Boolean(slot))
-        .filter((slot) => isSlotWithinBusinessHours(slot))
-    );
+    // js-combine-iterations: una sola pasada con reduce
+    const slots = new Set<string>();
+    for (const appointment of relevant) {
+      const slot = isoToTime(appointment.fechaHora);
+      if (slot && isSlotWithinBusinessHours(slot)) {
+        slots.add(slot);
+      }
+    }
+    return slots;
   }, [appointments, form.date, form.barberId]);
 
   // Granularity: recalculate only when the minute changes, not every render
@@ -669,19 +665,16 @@ const ReservationBookingForm = ({
 
   const { barberId, date, time } = form;
 
-  // Validar disponibilidad de horario en tiempo real
-  const checkAvailability = useCallback(async () => {
+  // rerender-derived-state-no-effect: disponibilidad derivada directamente (lógica 100% síncrona)
+  const availabilityCheck = useMemo(() => {
     if (!barberId || !date || !time) {
-      return;
+      return { checking: false, available: null, message: null };
     }
-
-    setAvailabilityCheck({ checking: true, available: null, message: null });
 
     try {
       const appointmentDate = new Date(`${date}T${time}:00`);
       const targetIso = appointmentDate.toISOString();
 
-      // Verificar si ya existe una cita en ese horario para ese peluquero
       const conflictingAppointment = appointments.find((appt) => {
         const apptPeluqueroId =
           typeof appt.peluquero === "object" ? appt.peluquero.id : null;
@@ -695,39 +688,26 @@ const ReservationBookingForm = ({
       });
 
       if (conflictingAppointment) {
-        setAvailabilityCheck({
+        return {
           checking: false,
-          available: false,
-          message:
-            "Este horario ya está ocupado. Por favor, selecciona otro horario.",
-        });
-      } else {
-        setAvailabilityCheck({
-          checking: false,
-          available: true,
-          message: "✓ Horario disponible",
-        });
+          available: false as const,
+          message: "Este horario ya está ocupado. Por favor, selecciona otro horario.",
+        };
       }
-    } catch (error) {
-      logger.warn("[Reservas] No se pudo verificar disponibilidad:", error);
-      setAvailabilityCheck({
+
+      return {
+        checking: false,
+        available: true as const,
+        message: "✓ Horario disponible",
+      };
+    } catch {
+      return {
         checking: false,
         available: null,
         message: "No se pudo verificar disponibilidad",
-      });
+      };
     }
   }, [appointments, barberId, date, time]);
-
-  // Validar disponibilidad cuando cambie fecha, hora o peluquero
-  useEffect(() => {
-    if (date && time && barberId) {
-      const timeoutId = setTimeout(() => {
-        checkAvailability();
-      }, 500); // Debounce de 500ms
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [barberId, date, time, checkAvailability]);
 
   useEffect(() => {
     let cancelled = false;
@@ -758,25 +738,33 @@ const ReservationBookingForm = ({
       .filter(Boolean)
       .join("|");
 
-    QRCode.toDataURL(descriptor || reference, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: 280,
-      color: {
-        dark: "#2B2B28",
-        light: "#FFFFFF",
-      },
-    })
-      .then((url) => {
-        if (!cancelled) {
-          setQrDataUrl(url);
-        }
+    import("qrcode").then((QRCodeModule) => {
+      if (cancelled) return;
+      const QRCode = QRCodeModule.default;
+      QRCode.toDataURL(descriptor || reference, {
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: 280,
+        color: {
+          dark: "#2B2B28",
+          light: "#FFFFFF",
+        },
       })
-      .catch(() => {
-        if (!cancelled) {
-          setQrDataUrl(null);
-        }
-      });
+        .then((url) => {
+          if (!cancelled) {
+            setQrDataUrl(url);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setQrDataUrl(null);
+          }
+        });
+    }).catch(() => {
+      if (!cancelled) {
+        setQrDataUrl(null);
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -967,6 +955,7 @@ const ReservationBookingForm = ({
     setInfoOpen(false);
   }, []);
 
+  // rerender-functional-setstate: leer submitState desde prev para evitar dependencia de closure
   const closePaymentModal = useCallback(() => {
     setPaymentModal({
       open: false,
@@ -976,24 +965,25 @@ const ReservationBookingForm = ({
     });
     setPendingPayment(null);
     setQrDataUrl(null);
-    if (submitState === "submitting") {
-      setSubmitState("idle");
-    }
-  }, [submitState]);
+    setSubmitState((prev) => (prev === "submitting" ? "idle" : prev));
+  }, []);
 
+  // rerender-functional-setstate: leer transactionSeed y citaId desde prev
   const handlePaymentMethodSelect = useCallback((method: PaymentMethod) => {
     if (!pendingPayment) return;
-    const seed = paymentModal.transactionSeed ?? buildTransactionSeed();
-    const transactionId = formatTransactionId(seed, paymentModal.citaId);
-    setPaymentModal((prev) => ({
-      ...prev,
-      method,
-      stage: method === "qr" ? "qr" : "card",
-      transactionSeed: seed,
-      transactionId,
-      error: null,
-    }));
-  }, [pendingPayment, paymentModal.transactionSeed, paymentModal.citaId]);
+    setPaymentModal((prev) => {
+      const seed = prev.transactionSeed ?? buildTransactionSeed();
+      const transactionId = formatTransactionId(seed, prev.citaId);
+      return {
+        ...prev,
+        method,
+        stage: method === "qr" ? "qr" : "card",
+        transactionSeed: seed,
+        transactionId,
+        error: null,
+      };
+    });
+  }, [pendingPayment]);
 
   const handleChangeMethod = useCallback(() => {
     setPaymentModal((prev) => ({
@@ -1033,29 +1023,32 @@ const ReservationBookingForm = ({
         transactionSeed: seed,
       }));
 
-      if (pendingPayment.amount > 0) {
-        await pagosService.create(
-          {
-            citaId,
-            monto: pendingPayment.amount,
-            metodoPago:
-              paymentModal.method === "qr"
-                ? "QR Sunsetz"
-                : "Tarjeta débito Sunsetz",
-            transaccionId: finalTransactionId,
-            estado: "Completado",
-          },
-          csrfToken
-        );
-      }
+      // async-parallel: ambas operaciones son independientes
+      const paymentPromise = pendingPayment.amount > 0
+        ? pagosService.create(
+            {
+              citaId,
+              monto: pendingPayment.amount,
+              metodoPago:
+                paymentModal.method === "qr"
+                  ? "QR Sunsetz"
+                  : "Tarjeta débito Sunsetz",
+              transaccionId: finalTransactionId,
+              estado: "Completado",
+            },
+            csrfToken
+          )
+        : Promise.resolve();
 
-      await citasService.update(
+      const updatePromise = citasService.update(
         citaId,
         {
           estado: "Pagada",
         },
         csrfToken
       );
+
+      await Promise.all([paymentPromise, updatePromise]);
 
       await refreshAppointments();
       setPaymentModal((prev) => ({

@@ -56,6 +56,13 @@ const transformations: Transformation[] = [
   }
 ];
 
+// rendering-hoist-jsx: separador de flecha estático fuera del componente
+const arrowSeparator = (
+  <div className="flex items-center justify-center">
+    <FaArrowRight className="text-2xl text-[#B8935E]" />
+  </div>
+);
+
 const TransformationTimeline = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -130,9 +137,7 @@ const TransformationTimeline = () => {
                   </div>
 
                   {/* Flecha indicadora */}
-                  <div className="flex items-center justify-center">
-                    <FaArrowRight className="text-2xl text-[#B8935E]" />
-                  </div>
+                  {arrowSeparator}
 
                   {/* DURANTE */}
                   <div className="relative">
@@ -148,9 +153,7 @@ const TransformationTimeline = () => {
                   </div>
 
                   {/* Flecha indicadora */}
-                  <div className="flex items-center justify-center">
-                    <FaArrowRight className="text-2xl text-[#B8935E]" />
-                  </div>
+                  {arrowSeparator}
 
                   {/* DESPUÉS */}
                   <div className="relative">

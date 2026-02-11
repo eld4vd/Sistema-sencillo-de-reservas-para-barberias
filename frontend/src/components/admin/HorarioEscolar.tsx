@@ -29,6 +29,26 @@ interface HorarioEscolarProps {
   onDateInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
+// rendering-hoist-jsx: constantes estáticas fuera del componente
+const SCHEDULE_HOURS = Array.from({ length: 13 }, (_, index) => 8 + index);
+
+const STATUS_LEGEND = (
+  <div className="mt-2 flex justify-center gap-3 text-[9px] text-gray-600">
+    <span className="inline-flex items-center gap-1">
+      <span className="h-3 w-3 rounded border border-emerald-400/50 bg-emerald-500/20" /> Pagada
+    </span>
+    <span className="inline-flex items-center gap-1">
+      <span className="h-3 w-3 rounded border border-sky-400/50 bg-sky-500/20" /> Completada
+    </span>
+    <span className="inline-flex items-center gap-1">
+      <span className="h-3 w-3 rounded border border-red-400/50 bg-red-500/20" /> Cancelada
+    </span>
+    <span className="inline-flex items-center gap-1">
+      <span className="h-3 w-3 rounded border border-dashed border-gray-300 bg-gray-50" /> Libre
+    </span>
+  </div>
+);
+
 const HorarioEscolar: React.FC<HorarioEscolarProps> = ({
   reservas,
   selectedDate,
@@ -95,10 +115,7 @@ const HorarioEscolar: React.FC<HorarioEscolarProps> = ({
     return map;
   }, [weeklyReservas]);
 
-  const scheduleHours = useMemo(
-    () => Array.from({ length: 13 }, (_, index) => 8 + index), // 8:00 - 20:00
-    []
-  );
+  const scheduleHours = SCHEDULE_HOURS;
 
   return (
     <div className="flex h-full flex-col overflow-hidden text-xs">
@@ -181,20 +198,7 @@ const HorarioEscolar: React.FC<HorarioEscolarProps> = ({
           </div>
         </div>
 
-            <div className="mt-2 flex justify-center gap-3 text-[9px] text-gray-600">
-          <span className="inline-flex items-center gap-1">
-            <span className="h-3 w-3 rounded border border-emerald-400/50 bg-emerald-500/20" /> Pagada
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-3 w-3 rounded border border-sky-400/50 bg-sky-500/20" /> Completada
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-3 w-3 rounded border border-red-400/50 bg-red-500/20" /> Cancelada
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-3 w-3 rounded border border-dashed border-gray-300 bg-gray-50" /> Libre
-          </span>
-        </div>
+            {STATUS_LEGEND}
       </header>
 
       <div className="mt-3 flex-1 overflow-hidden rounded-2xl border border-gray-300 bg-gray-50">
@@ -311,11 +315,11 @@ const HorarioEscolar: React.FC<HorarioEscolarProps> = ({
                                         <p className="text-[10px] text-gray-600">
                                           {cita.clienteEmail}
                                         </p>
-                                        {cita.clienteTelefono && (
+                                        {cita.clienteTelefono ? (
                                           <p className="text-[10px] text-gray-600">
                                             📞 {cita.clienteTelefono}
                                           </p>
-                                        )}
+                                        ) : null}
                                       </div>
                                       <div className="border-t border-gray-200 pt-2">
                                         <p className="text-[10px] uppercase tracking-wider text-blue-600">
@@ -333,10 +337,13 @@ const HorarioEscolar: React.FC<HorarioEscolarProps> = ({
                                           );
                                           return (
                                             <p className="text-[10px] text-gray-600">
-                                              {precio &&
-                                                currencyFormatter.format(precio)}
-                                              {precio && duracion && " • "}
-                                              {duracion && `${duracion} min`}
+                                              {precio != null && precio !== 0
+                                                ? currencyFormatter.format(precio)
+                                                : null}
+                                              {precio && duracion ? " • " : null}
+                                              {duracion != null && duracion !== 0
+                                                ? `${duracion} min`
+                                                : null}
                                             </p>
                                           );
                                         })()}

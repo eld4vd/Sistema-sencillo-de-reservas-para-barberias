@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { motion } from "framer-motion";
-import { jsPDF } from "jspdf";
+// bundle-dynamic-imports: jsPDF se importa dinámicamente solo al generar factura
 import {
   FaCalendarAlt,
   FaCheckCircle,
@@ -247,18 +247,15 @@ const ReservasDashboard = () => {
       return value.toLowerCase().includes(term);
     };
 
-    // Solo mostramos citas activas (Pagada), excluyendo completadas y canceladas
-    const filteredByEstado = reservas.filter((cita) => {
-      return cita.estado === "Pagada";
-    });
-
-    return filteredByEstado.filter(
+    // js-combine-iterations: una sola pasada
+    return reservas.filter(
       (cita) =>
-        matchesTerm(cita.clienteNombre) ||
-        matchesTerm(cita.clienteEmail) ||
-        matchesTerm(cita.clienteTelefono ?? undefined) ||
-        matchesTerm(getPeluqueroNombre(cita.peluquero)) ||
-        matchesTerm(getServicioNombre(cita.servicio))
+        cita.estado === "Pagada" &&
+        (matchesTerm(cita.clienteNombre) ||
+          matchesTerm(cita.clienteEmail) ||
+          matchesTerm(cita.clienteTelefono ?? undefined) ||
+          matchesTerm(getPeluqueroNombre(cita.peluquero)) ||
+          matchesTerm(getServicioNombre(cita.servicio)))
     );
   }, [reservas, search]);
 
@@ -484,6 +481,7 @@ const ReservasDashboard = () => {
     setInvoicePdfStatus("generating");
 
     try {
+      const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "pt" });
       const marginLeft = 48;
       let cursorY = 72;

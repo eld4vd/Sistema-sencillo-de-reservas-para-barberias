@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { jsPDF } from "jspdf";
+// bundle-dynamic-imports: jsPDF se importa dinámicamente solo al generar factura
 import {
   FaArrowLeft,
   FaCheckCircle,
@@ -455,6 +455,7 @@ const ReservasCompletadasDashboard = () => {
     setInvoicePdfStatus("generating");
 
     try {
+      const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ unit: "pt" });
       const marginLeft = 48;
       let cursorY = 72;

@@ -60,6 +60,11 @@ const testimonials: Testimonial[] = [
   },
 ];
 
+// rendering-hoist-jsx: estrellas estáticas fuera del componente
+const fiveStars = [...Array(5)].map((_, i) => (
+  <FaStar key={i} className="text-[#B8935E]" size={18} />
+));
+
 const ClientTestimonials = () => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -117,9 +122,7 @@ const ClientTestimonials = () => {
             </p>
             <div className="flex items-center gap-3">
               <div className="flex gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} className="text-[#B8935E]" size={18} />
-                ))}
+                {fiveStars}
               </div>
               <div className="h-8 w-px bg-[#FAF8F3]/20" />
               <span className="text-sm font-medium text-[#FAF8F3]">

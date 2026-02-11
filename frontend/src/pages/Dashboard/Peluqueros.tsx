@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { FaClock, FaCut, FaEdit, FaPlus, FaSearch, FaTrash, FaUserTie } from "react-icons/fa";
 import type { Peluquero, CreatePeluqueroDto } from "../../models/Peluquero";
@@ -51,7 +51,8 @@ const PeluquerosDashboard = () => {
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [mutationState, setMutationState] = useState<"idle" | "loading">("idle");
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
-  const [originalServicios, setOriginalServicios] = useState<number[]>([]);
+  // rerender-defer-reads: no se lee en JSX, solo en callbacks → useRef
+  const originalServiciosRef = useRef<number[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -134,9 +135,9 @@ const PeluquerosDashboard = () => {
         }
       });
 
-      return values
-        .filter((value) => value && value.trim().length > 0)
-        .some((value) => value.toLowerCase().includes(term));
+      return values.some(
+        (value) => value && value.trim().length > 0 && value.toLowerCase().includes(term)
+      );
     });
   }, [peluqueros, search, servicioIdsPorPeluquero, servicioMap]);
 
@@ -146,7 +147,7 @@ const PeluquerosDashboard = () => {
     setFormErrors({});
     if (mode === "create") {
       setForm({ ...defaultFormState });
-      setOriginalServicios([]);
+      originalServiciosRef.current = [];
     }
     if (mode === "edit" && peluquero) {
       const serviciosVinculados = [...(servicioIdsPorPeluquero.get(peluquero.id) ?? [])];
@@ -159,7 +160,7 @@ const PeluquerosDashboard = () => {
         fotoUrl: peluquero.fotoUrl ?? "",
         servicioIds: serviciosVinculados,
       });
-      setOriginalServicios(serviciosVinculados);
+      originalServiciosRef.current = serviciosVinculados;
     }
   }, [servicioIdsPorPeluquero]);
 
@@ -169,7 +170,7 @@ const PeluquerosDashboard = () => {
     setForm({ ...defaultFormState });
     setFormErrors({});
     setMutationState("idle");
-    setOriginalServicios([]);
+    originalServiciosRef.current = [];
   }, []);
 
   const handleChange = useCallback(<K extends keyof PeluqueroFormState>(key: K, value: PeluqueroFormState[K]) => {
@@ -264,8 +265,8 @@ const PeluquerosDashboard = () => {
 
       if (modalMode === "edit" && selected) {
         await peluquerosService.update(selected.id, payload, csrfToken);
-        const toAdd = selectedServiciosIds.filter((id) => !originalServicios.includes(id));
-        const toRemove = originalServicios.filter((id) => !selectedServiciosIds.includes(id));
+        const toAdd = selectedServiciosIds.filter((id) => !originalServiciosRef.current.includes(id));
+        const toRemove = originalServiciosRef.current.filter((id) => !selectedServiciosIds.includes(id));
 
         if (toAdd.length > 0) {
           await Promise.all(

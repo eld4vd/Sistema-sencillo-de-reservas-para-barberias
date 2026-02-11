@@ -120,7 +120,7 @@ const ServiceCard3D = ({ service, index }: { service: Service; index: number }) 
       className={`group relative h-full ${service.popular ? "lg:scale-110" : ""}`}
     >
       {/* Badge Popular */}
-      {service.popular && (
+      {service.popular ? (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -131,9 +131,9 @@ const ServiceCard3D = ({ service, index }: { service: Service; index: number }) 
             ⭐ MÁS ELEGIDO
           </div>
         </motion.div>
-      )}
+      ) : null}
 
-      {/* Card Container */}
+      {/* Card Container */
       <div
         className={`relative h-full overflow-hidden rounded-3xl border-2 transition-all duration-500 ${
           service.popular
@@ -231,14 +231,39 @@ const ServiceCard3D = ({ service, index }: { service: Service; index: number }) 
   );
 };
 
+// rendering-hoist-jsx: static background effects
+const backgroundEffects = (
+  <div className="pointer-events-none absolute inset-0">
+    <div className="absolute left-1/4 top-20 h-96 w-96 rounded-full bg-[#B8935E]/5 blur-[120px]" />
+    <div className="absolute right-1/4 bottom-20 h-96 w-96 rounded-full bg-amber-500/5 blur-[120px]" />
+  </div>
+);
+
+// rendering-hoist-jsx: static trust badges
+const trustBadges = (
+  <div className="mt-16 flex flex-wrap items-center justify-center gap-8 border-t border-white/10 pt-12 text-center">
+    <div>
+      <div className="text-3xl font-bold text-white">+1000</div>
+      <div className="text-sm text-white/60">Clientes satisfechos</div>
+    </div>
+    <div className="h-12 w-px bg-white/10" />
+    <div>
+      <div className="text-3xl font-bold text-white">100%</div>
+      <div className="text-sm text-white/60">Garantía de calidad</div>
+    </div>
+    <div className="h-12 w-px bg-white/10" />
+    <div>
+      <div className="text-3xl font-bold text-white">4.9★</div>
+      <div className="text-sm text-white/60">Valoración promedio</div>
+    </div>
+  </div>
+);
+
 const ServicesShowcase = () => {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-[#0A0A0A] via-[#050607] to-[#0A0A0A] py-32 text-white">
       {/* Background effects */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/4 top-20 h-96 w-96 rounded-full bg-[#B8935E]/5 blur-[120px]" />
-        <div className="absolute right-1/4 bottom-20 h-96 w-96 rounded-full bg-amber-500/5 blur-[120px]" />
-      </div>
+      {backgroundEffects}
 
       <div className="relative mx-auto max-w-7xl px-6 lg:px-12">
         {/* Header */}
@@ -304,22 +329,7 @@ const ServicesShowcase = () => {
         </motion.div>
 
         {/* Trust badges */}
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-8 border-t border-white/10 pt-12 text-center">
-          <div>
-            <div className="text-3xl font-bold text-white">+1000</div>
-            <div className="text-sm text-white/60">Clientes satisfechos</div>
-          </div>
-          <div className="h-12 w-px bg-white/10" />
-          <div>
-            <div className="text-3xl font-bold text-white">100%</div>
-            <div className="text-sm text-white/60">Garantía de calidad</div>
-          </div>
-          <div className="h-12 w-px bg-white/10" />
-          <div>
-            <div className="text-3xl font-bold text-white">4.9★</div>
-            <div className="text-sm text-white/60">Valoración promedio</div>
-          </div>
-        </div>
+        {trustBadges}
       </div>
     </section>
   );
